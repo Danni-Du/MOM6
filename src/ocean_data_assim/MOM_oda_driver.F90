@@ -828,10 +828,10 @@ subroutine get_ML_bias_correction(Time, US, CS)
   !! Loop through all local gridpoints
   do j=CS%model_G%jsc,CS%model_G%jec ; do i=CS%model_G%isc,CS%model_G%iec
 
-    if (CS%model_G%geolatT(i,j) > 60.0 .or. CS%model_G%geolatT(i,j) < -60.0) then
-      CS%T_ml_tend(i,j,:) = 0.0
-      CS%S_ml_tend(i,j,:) = 0.0
-    else
+    !if (CS%model_G%geolatT(i,j) > 60.0 .or. CS%model_G%geolatT(i,j) < -60.0) then
+      !CS%T_ml_tend(i,j,:) = 0.0
+      !CS%S_ml_tend(i,j,:) = 0.0
+    !else
       !! put local variables into ml_data
       CS%ml_data%T = CS%Ocean_background_ave%T(i,j,:)
       CS%ml_data%S = CS%Ocean_background_ave%S(i,j,:)
@@ -871,7 +871,7 @@ subroutine get_ML_bias_correction(Time, US, CS)
 
       CS%T_ml_tend(i,j,:) = CS%ml_data%T_inc * CS%T_ml_bias_adjustment_multiplier
       CS%S_ml_tend(i,j,:) = CS%ml_data%S_inc * CS%S_ml_bias_adjustment_multiplier
-    endif
+    !endif
   enddo; enddo
 
   call pass_var(CS%T_ml_tend, CS%domains(CS%ensemble_id))
