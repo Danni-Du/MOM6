@@ -218,7 +218,7 @@ contains
                         end if
                     end do
                     
-                    tauamp = sqrt(((ml_data%taux_left+ml_data%taux_right)/2)**2+((ml_data%tauy_south+ml_data%tauy_north)/2)**2)
+                    !tauamp = sqrt(((ml_data%taux_left+ml_data%taux_right)/2)**2+((ml_data%tauy_south+ml_data%tauy_north)/2)**2)
 
                     ! subroutine(input,DA tendency)        
                     ANN_input(1:15) = thetao_zgrad_sigma*100
