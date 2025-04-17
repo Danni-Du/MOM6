@@ -17,9 +17,11 @@ public :: oda_ml_init, oda_ml_end, oda_ml_inference
 ! Data structure to save the ML configuration, input, and output data
 type, public :: ocean_oda_ml_config ; private
     character(len=255)  :: filename
-    real, dimension(16,66)  :: l1_weight
-    real, dimension(16,16)  :: l2_weight, l3_weight
-    real, dimension(16) :: l1_bias, l2_bias, l3_bias
+    real, dimension(32,66)  :: l1_weight
+    real, dimension(32,32)  :: l2_weight
+    real, dimension(16,32)  :: l3_weight
+    real, dimension(32) :: l1_bias, l2_bias
+    real, dimension(16) :: l3_bias
     real, dimension(:), allocatable :: z_l
     real, dimension(:), allocatable :: z_i
     integer :: nk
@@ -61,7 +63,7 @@ real :: reference_depth = 10
 real :: ReLU_zero = 0
 real, dimension(15) :: target_sigmas = (/0.1,0.3,0.5,0.7,0.9,1.1,1.3,1.5,1.7,1.9,2.1,2.3,2.5,2.7,2.9/)
 real, dimension(16) :: output_flux_sigmas = (/0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4, 2.6, 2.8, 3.0/)
-character(len=255)  :: danni_ANN_name = '/gpfs/f5/gfdl_sd/world-shared/Danni.Du/ECDA_data/ML/danni_ANN_M4_TzBzdivmldtaufluxUz_2003_2016_10epoch.nc'
+character(len=255)  :: danni_ANN_name = '/gpfs/f5/gfdl_sd/world-shared/Danni.Du/ECDA_data/ML/danni_ANN_M8_TzBzdivmldtaufluxUz_2003_2014_20epoch.nc'
 real :: seconds_in_30_days = 3600*24*30
 
 integer :: id_clock_ml_remapping
@@ -91,7 +93,8 @@ contains
         real, dimension(66) :: ANN_input
         real, dimension(:), allocatable :: output_DT_at_zl, output_flux_at_zi
         real, dimension(:), allocatable :: z_l
-        real, dimension(16) :: l1_output, l2_output, l3_output
+        real, dimension(32) :: l1_output, l2_output
+        real, dimension(16) :: l3_output
         integer :: zz, i
         real :: mask_Tuv
         
@@ -328,8 +331,9 @@ contains
         ! real, dimension(16,16), intent(out) :: l2_weight, l3_weight
         ! real, dimension(16), intent(out) :: l1_bias, l2_bias, l3_bias
 
-        real, dimension(66,16)  :: l1_weight_temp
-        real, dimension(16,16) :: l2_weight_temp, l3_weight_temp
+        real, dimension(66,32)  :: l1_weight_temp
+        real, dimension(32,32) :: l2_weight_temp
+        real, dimension(32,16) :: l3_weight_temp
         integer :: ncid, varid, retval
         character(len = 255) :: varname
 
