@@ -17,7 +17,7 @@ public :: oda_ml_init, oda_ml_end, oda_ml_inference
 ! Data structure to save the ML configuration, input, and output data
 type, public :: ocean_oda_ml_config ; private
     character(len=255)  :: filename
-    real, dimension(32,66)  :: l1_weight
+    real, dimension(32,60)  :: l1_weight
     real, dimension(32,32)  :: l2_weight
     real, dimension(16,32)  :: l3_weight
     real, dimension(32) :: l1_bias, l2_bias
@@ -90,7 +90,7 @@ contains
         real :: PRHO_top, PRHO_bottom, uo_right_top, uo_right_bottom, uo_left_top, uo_left_bottom
         real, dimension(15) :: thetao_zgrad_sigma, so_zgrad_sigma, PRHO_zgrad_sigma, div_sigma, output_DT_sigmas, uo_zgrad_sigma
         real, dimension(:), allocatable :: thetao_zgrad_profile, so_zgrad_profile, div_profile, PRHO_zgrad_profile, uo_zgrad_profile
-        real, dimension(66) :: ANN_input
+        real, dimension(60) :: ANN_input
         real, dimension(:), allocatable :: output_DT_at_zl, output_flux_at_zi
         real, dimension(:), allocatable :: z_l
         real, dimension(32) :: l1_output, l2_output
@@ -229,13 +229,7 @@ contains
                     ANN_input(1:15) = thetao_zgrad_sigma*100
                     ANN_input(16:30) = PRHO_zgrad_sigma*100
                     ANN_input(31:45) = div_sigma*1E7
-                    ANN_input(46) = mld_depth*0.1
-                    ANN_input(47) = tauamp*100
-                    ANN_input(48) = ml_data%latent*0.1
-                    ANN_input(49) = ml_data%sensible*0.1
-                    ANN_input(50) = ml_data%lw*0.1
-                    ANN_input(51) = ml_data%sw*0.1
-                    ANN_input(52:66) = uo_zgrad_sigma*1000
+                    ANN_input(46:60) = uo_zgrad_sigma*1000
 
                     l1_output = max(ReLU_zero, matmul(ml_config%l1_weight, ANN_input) + ml_config%l1_bias)
                     l2_output = max(ReLU_zero, matmul(ml_config%l2_weight, l1_output) + ml_config%l2_bias)
@@ -331,7 +325,7 @@ contains
         ! real, dimension(16,16), intent(out) :: l2_weight, l3_weight
         ! real, dimension(16), intent(out) :: l1_bias, l2_bias, l3_bias
 
-        real, dimension(66,32)  :: l1_weight_temp
+        real, dimension(60,32)  :: l1_weight_temp
         real, dimension(32,32) :: l2_weight_temp
         real, dimension(32,16) :: l3_weight_temp
         integer :: ncid, varid, retval
