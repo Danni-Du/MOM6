@@ -17,7 +17,7 @@ public :: oda_ml_init, oda_ml_end, oda_ml_inference
 ! Data structure to save the ML configuration, input, and output data
 type, public :: ocean_oda_ml_config ; private
     character(len=255)  :: filename
-    real, dimension(32,66)  :: l1_weight
+    real, dimension(32,70)  :: l1_weight
     real, dimension(32,32)  :: l2_weight
     real, dimension(16,32)  :: l3_weight
     real, dimension(32) :: l1_bias, l2_bias
@@ -80,7 +80,7 @@ contains
         type(ocean_oda_ml_config), pointer, intent(in) :: ml_config
         type(ocean_oda_ml_data), pointer, intent(in) :: ml_data
         
-        real :: SA, PT, CT, PRHO ,tauamp
+        real :: SA, PT, CT, PRHO ,tauamp, rho0
         real, dimension(:), allocatable :: PRHO_profile
         real :: PRHO_mld, PRHO_10m 
         real :: mld_depth
@@ -89,9 +89,10 @@ contains
         real :: thetao, so, uo_left, uo_right, vo_south, vo_north, div, thetao_top, thetao_bottom, so_top,so_bottom
         real :: PRHO_top, PRHO_bottom, uo_right_top, uo_right_bottom, uo_left_top, uo_left_bottom
         real :: vo_north_top, vo_north_bottom, vo_south_top, vo_south_bottom
-        real, dimension(15) :: thetao_zgrad_sigma, so_zgrad_sigma, PRHO_zgrad_sigma, div_sigma, output_DT_sigmas, uo_zgrad_sigma, vo_zgrad_sigma
+        real, dimension(15) :: thetao_zgrad_sigma, so_zgrad_sigma, PRHO_zgrad_sigma, div_sigma, output_DT_sigmas, uo_zgrad_sigma, vo_zgrad_sigma, shear2_sigma
+        real :: thetao_zgrad_sigma_dist, PRHO_zgrad_sigma_dist, div_sigma_dist, shear2_sigma_dist, coef
         real, dimension(:), allocatable :: thetao_zgrad_profile, so_zgrad_profile, div_profile, PRHO_zgrad_profile, uo_zgrad_profile, vo_zgrad_profile
-        real, dimension(66) :: ANN_input
+        real, dimension(70) :: ANN_input
         real, dimension(:), allocatable :: output_DT_at_zl, output_flux_at_zi
         real, dimension(:), allocatable :: z_l
         real, dimension(32) :: l1_output, l2_output
@@ -235,24 +236,38 @@ contains
                     
                     tauamp = sqrt(((ml_data%taux_left+ml_data%taux_right)/2)**2+((ml_data%tauy_south+ml_data%tauy_north)/2)**2)
 
-                    ! subroutine(input,DA tendency)        
-                    ANN_input(1:15) = thetao_zgrad_sigma*100
-                    ANN_input(16:30) = PRHO_zgrad_sigma*100
-                    ANN_input(31:45) = div_sigma*1E7
-                    ANN_input(46) = mld_depth*0.1
-                    ANN_input(47) = tauamp*10
-                    ANN_input(48) = ml_data%latent*0.1
-                    ANN_input(49) = ml_data%sensible*0.1
-                    ANN_input(50) = ml_data%lw*0.1
-                    ANN_input(51) = ml_data%sw*0.1
-                    ANN_input(52:66) = (uo_zgrad_sigma**2 + vo_zgrad_sigma**2) *10000
+                    ! subroutine(input,DA tendency)
+                    thetao_zgrad_sigma_dist = sqrt(sum(thetao_zgrad_sigma**2))
+                    PRHO_zgrad_sigma_dist = sqrt(sum(PRHO_zgrad_sigma**2))
+                    div_sigma_dist = sqrt(sum(div_sigma**2))
+                    shear2_sigma = uo_zgrad_sigma**2 + vo_zgrad_sigma**2
+                    shear2_sigma_dist = sqrt(sum(shear2_sigma**2))
+                    
+                    ANN_input(1:15) = thetao_zgrad_sigma/thetao_zgrad_sigma_dist
+                    ANN_input(16:30) = PRHO_zgrad_sigma/PRHO_zgrad_sigma_dist
+                    ANN_input(31:45) = div_sigma/div_sigma_dist
+                    ANN_input(46) = (log10(mld_depth) - 1.0) / 2.5
+                    ANN_input(47) = (log10(tauamp+1E-3)+1.18)/0.46
+                    ANN_input(48) = (ml_data%latent+112)/72
+                    ANN_input(49) = (ml_data%sensible+14.8)/24.25
+                    ANN_input(50) = (ml_data%lw+55)/22
+                    ANN_input(51) = ml_data%sw/400
+                    ANN_input(52:66) = shear2_sigma/shear2_sigma_dist
+                    ANN_input(67) = (log10(thetao_zgrad_sigma_dist)+0.82)/0.5
+                    ANN_input(68) = (log10(PRHO_zgrad_sigma_dist[:,67])+1.4)/0.56
+                    ANN_input(69) = (log10(div_sigma_dist[:,68])+6)/0.43
+                    ANN_input(70) = (log10(shear2_sigma_dist)+4.2)/0.87
 
                     l1_output = max(ReLU_zero, matmul(ml_config%l1_weight, ANN_input) + ml_config%l1_bias)
                     l2_output = max(ReLU_zero, matmul(ml_config%l2_weight, l1_output) + ml_config%l2_bias)
                     l3_output = matmul(ml_config%l3_weight, l2_output) + ml_config%l3_bias
                     
                     ! l3_output is the predicted flux
-                    output_DT_sigmas =  (l3_output(1:15)-l3_output(2:16))/(0.2*mld_depth)
+
+                    coef = thetao_zgrad_sigma_dist*0.1*mld_depth*(tauamp/rho0)**2
+                    l3_output = l3_output * coef
+        
+                    output_DT_sigmas =  (l3_output(1:15)-l3_output(2:16))/(0.2*mld_depth) * (3600*24*30)
                     
                     !allocate(output_flux_at_zi(zl_index_3mld+1))
                     !output_flux_at_zi(1) = l3_output(1)
@@ -337,11 +352,11 @@ contains
         type(ocean_oda_ml_config), pointer, intent(in) :: ml_config
 
         ! character(len=*), intent(in) :: filename
-        ! real, dimension(16,66), intent(out) :: l1_weight
+        ! real, dimension(16,70), intent(out) :: l1_weight
         ! real, dimension(16,16), intent(out) :: l2_weight, l3_weight
         ! real, dimension(16), intent(out) :: l1_bias, l2_bias, l3_bias
 
-        real, dimension(66,32)  :: l1_weight_temp
+        real, dimension(70,32)  :: l1_weight_temp
         real, dimension(32,32) :: l2_weight_temp
         real, dimension(32,16) :: l3_weight_temp
         integer :: ncid, varid, retval
