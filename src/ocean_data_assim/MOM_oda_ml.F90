@@ -256,8 +256,8 @@ contains
                     ANN_input(51) = ml_data%sw/400
                     ANN_input(52:66) = shear2_sigma/shear2_sigma_dist
                     ANN_input(67) = (log10(thetao_zgrad_sigma_dist)+0.82)/0.5
-                    ANN_input(68) = (log10(PRHO_zgrad_sigma_dist[:,67])+1.4)/0.56
-                    ANN_input(69) = (log10(div_sigma_dist[:,68])+6)/0.43
+                    ANN_input(68) = (log10(PRHO_zgrad_sigma_dist)+1.4)/0.56
+                    ANN_input(69) = (log10(div_sigma_dist)+6)/0.43
                     ANN_input(70) = (log10(shear2_sigma_dist)+4.2)/0.87
 
                     l1_output = max(ReLU_zero, matmul(ml_config%l1_weight, ANN_input) + ml_config%l1_bias)
