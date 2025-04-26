@@ -251,7 +251,7 @@ contains
                     ANN_input(46) = (log10(mld_depth) - 1.0) / 2.5
                     ANN_input(47) = (log10(tauamp+1E-3)+1.18)/0.46
                     ANN_input(48) = (ml_data%latent+112)/73
-                    ANN_input(49) = (ml_data%sensible+14.8)/24.25
+                    ANN_input(49) = (ml_data%sensible+15)/25
                     ANN_input(50) = (ml_data%lw+55)/22
                     ANN_input(51) = ml_data%sw/400
                     ANN_input(52:66) = shear2_sigma/shear2_sigma_dist
