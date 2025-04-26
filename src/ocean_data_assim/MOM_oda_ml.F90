@@ -63,7 +63,7 @@ real :: reference_depth = 10
 real :: ReLU_zero = 0
 real, dimension(15) :: target_sigmas = (/0.1,0.3,0.5,0.7,0.9,1.1,1.3,1.5,1.7,1.9,2.1,2.3,2.5,2.7,2.9/)
 real, dimension(16) :: output_flux_sigmas = (/0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4, 2.6, 2.8, 3.0/)
-character(len=255)  :: danni_ANN_name = '/gpfs/f5/gfdl_sd/world-shared/Danni.Du/ECDA_data/ML/danni_ANN_M8_ens_TzBzmldtaufluxRiTzBzRi_2003_2014_20epoch.nc'
+character(len=255)  :: danni_ANN_name = '/gpfs/f5/gfdl_sd/world-shared/Danni.Du/ECDA_data/ML/danni_ANN_M8_ens_TzBzmldtaufluxRiTzBzRi_2003_2014_20epoch_6.nc'
 real :: seconds_in_30_days = 3600*24*30
 
 integer :: id_clock_ml_remapping
@@ -92,7 +92,7 @@ contains
         real, dimension(15) :: thetao_zgrad_sigma, so_zgrad_sigma, PRHO_zgrad_sigma, div_sigma, output_DT_sigmas, uo_zgrad_sigma, vo_zgrad_sigma, shear2_sigma
         real :: thetao_zgrad_sigma_dist, PRHO_zgrad_sigma_dist, div_sigma_dist, shear2_sigma_dist, coef
         real, dimension(:), allocatable :: thetao_zgrad_profile, so_zgrad_profile, div_profile, PRHO_zgrad_profile, uo_zgrad_profile, vo_zgrad_profile
-        real, dimension(54) :: ANN_input
+        real, dimension() :: ANN_input
         real, dimension(:), allocatable :: output_DT_at_zl, output_flux_at_zi
         real, dimension(:), allocatable :: z_l
         real, dimension(32) :: l1_output, l2_output
@@ -249,16 +249,16 @@ contains
                     ANN_input(16:30) = PRHO_zgrad_sigma/PRHO_zgrad_sigma_dist
                     
                     ANN_input(31) = (log10(mld_depth) - 1.0) / 2.5
-                    ANN_input(32) = (log10(tauamp+1E-3)+1.18)/0.46
-                    ANN_input(33) = (ml_data%latent+112)/73
-                    ANN_input(34) = (ml_data%sensible+15)/25
-                    ANN_input(35) = (ml_data%lw+55)/22
+                    ANN_input(32) = (log10(tauamp+1E-3)+1.2)/0.46
+                    ANN_input(33) = (ml_data%latent+114)/71
+                    ANN_input(34) = (ml_data%sensible+14.4)/24
+                    ANN_input(35) = (ml_data%lw+55)/21
                     ANN_input(36) = ml_data%sw/400
                     ANN_input(37:51) = shear2_sigma/shear2_sigma_dist
-                    ANN_input(52) = (log10(thetao_zgrad_sigma_dist)+0.82)/0.5
-                    ANN_input(53) = (log10(PRHO_zgrad_sigma_dist)+1.4)/0.56
+                    ANN_input(52) = (log10(thetao_zgrad_sigma_dist)+0.8)/0.5
+                    ANN_input(53) = (log10(PRHO_zgrad_sigma_dist)+1.35)/0.55
     
-                    ANN_input(54) = (log10(shear2_sigma_dist)+4.2)/0.87
+                    ANN_input(54) = (log10(shear2_sigma_dist)+4.15)/0.86
 
                     l1_output = max(ReLU_zero, matmul(ml_config%l1_weight, ANN_input) + ml_config%l1_bias)
                     l2_output = max(ReLU_zero, matmul(ml_config%l2_weight, l1_output) + ml_config%l2_bias)
