@@ -269,7 +269,7 @@ contains
                     coef = thetao_zgrad_sigma_dist*0.1*mld_depth*(tauamp/rho0)**0.5
                     l3_output = l3_output * coef
         
-                    output_DT_sigmas =  (l3_output(1:15)-l3_output(2:16))/(0.2*mld_depth) * (3600*24*30)
+                    output_DT_sigmas =  (l3_output(1:15)-l3_output(2:16))/(0.2*mld_depth) 
                     
                     !allocate(output_flux_at_zi(zl_index_3mld+1))
                     !output_flux_at_zi(1) = l3_output(1)
@@ -298,7 +298,7 @@ contains
                         end if
                     end do
 
-                    ml_data%T_inc(1:zl_index_3mld)=output_DT_at_zl / seconds_in_30_days
+                    ml_data%T_inc(1:zl_index_3mld) = output_DT_at_zl
                 endif
             endif ! end if 3 mld exceeds total number of levels
         
