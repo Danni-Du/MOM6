@@ -271,12 +271,12 @@ contains
                     ! l3_output is the predicted flux
 
                     coef = thetao_zgrad_sigma_dist*0.1*mld_depth*(tauamp/rho0)**0.5
-                    l3_output[1:16] = l3_output[1:16] * coef
+                    l3_output(1:16) = l3_output(1:16) * coef
 
                     coef = thetao_zgrad_sigma_dist*mld_depth*div_sigma_dist
-                    l3_output[17:32] = l3_output[17:32] * coef
+                    l3_output(17:32) = l3_output(17:32) * coef
 
-                    l3_output_final = l3_output[1:16] + l3_output[17:32]
+                    l3_output_final = l3_output(1:16) + l3_output(17:32)
         
                     output_DT_sigmas =  (l3_output_final(1:15)-l3_output_final(2:16))/(0.2*mld_depth) 
                     
