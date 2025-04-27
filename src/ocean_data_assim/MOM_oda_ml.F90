@@ -99,13 +99,15 @@ contains
         real, dimension(16) :: l3_output
         integer :: zz, i
         real :: mask_Tuv
+        real :: Smin
         
         ml_data%T_inc=0.0
 
         rho0 = 1035
         
         mask_Tuv = ml_data%mask2dT + ml_data%OBCmaskCu_left + ml_data%OBCmaskCu_right + ml_data%OBCmaskCv_south + ml_data%OBCmaskCv_north
-        if (mask_Tuv < 5.0 .and. ml_data%S(1) < 0.0) then
+        Smin = min(ml_data%S)
+        if (mask_Tuv < 5.0 .and. Smin < 0.0) then
             ml_data%T_inc=0.0
         else
             allocate(z_l(ml_config%nk),source=0.0)
