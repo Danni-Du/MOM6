@@ -107,7 +107,7 @@ contains
         rho0 = 1035
         
         mask_Tuv = ml_data%mask2dT + ml_data%OBCmaskCu_left + ml_data%OBCmaskCu_right + ml_data%OBCmaskCv_south + ml_data%OBCmaskCv_north
-        Smin = min(ml_data%S)
+        Smin = MINVAL(ml_data%S)
         if (mask_Tuv < 5.0 .and. Smin < 0.0) then
             ml_data%T_inc=0.0
         else
