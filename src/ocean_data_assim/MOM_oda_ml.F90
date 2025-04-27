@@ -106,7 +106,7 @@ contains
         rho0 = 1035
         
         mask_Tuv = ml_data%mask2dT + ml_data%OBCmaskCu_left + ml_data%OBCmaskCu_right + ml_data%OBCmaskCv_south + ml_data%OBCmaskCv_north
-        if (mask_Tuv < 5.0) then
+        if (mask_Tuv < 5.0 .and. ml_data%S(1) < 0.0) then
             ml_data%T_inc=0.0
         else
             allocate(z_l(ml_config%nk),source=0.0)
