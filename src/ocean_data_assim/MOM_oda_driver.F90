@@ -167,6 +167,7 @@ type, public :: ODA_CS ; private
   type(time_type) :: Apply_Time !< Current Prior time for time averaging
   type(diag_ctrl), pointer :: diag_cs=> NULL() !<Pointer to diagnostics control structure
   type(INC_CS) :: INC_CS !< A Structure containing integer file handles for bias adjustment
+
   integer :: id_inc_t = -1 !< A diagnostic handle for the temperature climatological adjustment
   integer :: id_inc_s = -1 !< A diagnostic handle for the salinity climatological adjustment
   integer :: id_inc_ml_t = -1 !< A diagnostic handle for the temperature climatological adjustment
@@ -175,6 +176,11 @@ type, public :: ODA_CS ; private
   integer :: id_inc_s_z = -1 !< A diagnostic handle for the salinity climatological adjustment
   integer :: id_inc_ml_t_z = -1 !< A diagnostic handle for the temperature climatological adjustment
   integer :: id_inc_ml_s_z = -1 !< A diagnostic handle for the salinity climatological adjustment
+  integer :: id_inc_bc_t = -1 !< A diagnostic handle for the temperature climatological adjustment
+  integer :: id_inc_bc_s = -1 !< A diagnostic handle for the salinity climatological adjustment
+  integer :: id_inc_bc_t_z = -1 !< A diagnostic handle for the temperature climatological adjustment
+  integer :: id_inc_bc_s_z = -1 !< A diagnostic handle for the salinity climatological adjustment
+  
   integer :: id_prior_count = -1
   integer :: id_prior_t = -1, id_prior_s = -1, id_prior_u = -1, id_prior_v = -1
   integer :: id_prior_t_z = -1, id_prior_s_z = -1, id_prior_u_z = -1, id_prior_v_z = -1
@@ -570,16 +576,16 @@ subroutine init_oda_diags(Time, US, diag_CS, CS)
 
   if (CS%do_T_bias_adjustment .or. CS%do_S_bias_adjustment) then
     if (CS%do_T_bias_adjustment) then
-      CS%id_inc_t = register_diag_field('ocean_model', 'temp_bc_increment', diag_CS%axesTL, &
+      CS%id_inc_bc_t = register_diag_field('ocean_model', 'temp_bc_increment', diag_CS%axesTL, &
         Time, 'Ocean potential temperature increments predicted by OTA', 'degC', conversion=US%C_to_degC)
-      CS%id_inc_t_z = register_diag_field('ocean_model', 'temp_bc_increment_z', diag_CS%axesTZ, &
+      CS%id_inc_bc_t_z = register_diag_field('ocean_model', 'temp_bc_increment_z', diag_CS%axesTZ, &
       Time, 'Ocean potential temperature increments predicted by OTA', 'degC', conversion=US%C_to_degC)
     endif
 
     if (CS%do_S_bias_adjustment) then
-      CS%id_inc_s = register_diag_field('ocean_model', 'salt_bc_increment', diag_CS%axesTL, &
+      CS%id_inc_bc_s = register_diag_field('ocean_model', 'salt_bc_increment', diag_CS%axesTL, &
         Time, 'Ocean salinity increments predicted by OTA', 'psu', conversion=US%S_to_ppt)
-      CS%id_inc_s_z = register_diag_field('ocean_model', 'salt_bc_increment_z', diag_CS%axesTZ, &
+      CS%id_inc_bc_s_z = register_diag_field('ocean_model', 'salt_bc_increment_z', diag_CS%axesTZ, &
         Time, 'Ocean salinity increments predicted by OTA', 'psu', conversion=US%S_to_ppt)
     endif
   endif
@@ -1206,6 +1212,15 @@ subroutine apply_oda_tracer_increments(Time, G, GV, tv, h, CS)
   call pass_var(T_ml_tend_inc, G%Domain)
   call pass_var(S_ml_tend_inc, G%Domain)
 
+  do j=jsc,jec; do i=isc,iec
+    call remapping_core_h(CS%remapCS, CS%nk, CS%h(i,j,:), CS%T_bc_tend(i,j,:), &
+         G%ke, h(i,j,:), T_bc_tend_inc(i,j,:), h_neglect, h_neglect_edge)
+    call remapping_core_h(CS%remapCS, CS%nk, CS%h(i,j,:), CS%S_bc_tend(i,j,:), &
+         G%ke, h(i,j,:), S_bc_tend_inc(i,j,:), h_neglect, h_neglect_edge)
+  enddo; enddo
+  call pass_var(T_bc_tend_inc, G%Domain)
+  call pass_var(S_bc_tend_inc, G%Domain)
+
   tv%T(isc:iec,jsc:jec,:) = tv%T(isc:iec,jsc:jec,:) + T_tend_inc(isc:iec,jsc:jec,:)*CS%apply_interval
   tv%S(isc:iec,jsc:jec,:) = tv%S(isc:iec,jsc:jec,:) + S_tend_inc(isc:iec,jsc:jec,:)*CS%apply_interval
 
@@ -1234,6 +1249,14 @@ subroutine apply_oda_tracer_increments(Time, G, GV, tv, h, CS)
   if (CS%do_S_ml_bias_adjustment) then
     if (CS%id_inc_ml_s > 0) call post_data(CS%id_inc_ml_s, S_ml_tend_inc, CS%diag_CS)
     if (CS%id_inc_ml_s_z > 0) call post_data(CS%id_inc_ml_s_z, CS%S_ml_tend, CS%diag_CS)
+  endif
+  if (CS%do_T_bias_adjustment) then
+    if (CS%id_inc_bc_t > 0) call post_data(CS%id_inc_bc_t, T_bc_tend_inc, CS%diag_CS)
+    if (CS%id_inc_bc_t_z > 0) call post_data(CS%id_inc_bc_t_z, CS%T_bc_tend, CS%diag_CS)
+  endif
+  if (CS%do_S_bias_adjustment) then
+    if (CS%id_inc_bc_s > 0) call post_data(CS%id_inc_bc_s, S_bc_tend_inc, CS%diag_CS)
+    if (CS%id_inc_bc_s_z > 0) call post_data(CS%id_inc_bc_s_z, CS%S_bc_tend, CS%diag_CS)
   endif
   call disable_averaging(CS%diag_CS)
 
