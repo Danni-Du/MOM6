@@ -571,9 +571,9 @@ subroutine init_oda_diags(Time, US, diag_CS, CS)
   if (CS%do_T_bias_adjustment .or. CS%do_S_bias_adjustment) then
     if (CS%do_T_bias_adjustment) then
       CS%id_inc_t = register_diag_field('ocean_model', 'temp_bc_increment', diag_CS%axesTL, &
-        Time, 'Ocean potential temperature increments predicted by ML', 'degC', conversion=US%C_to_degC)
+        Time, 'Ocean potential temperature increments predicted by OTA', 'degC', conversion=US%C_to_degC)
       CS%id_inc_t_z = register_diag_field('ocean_model', 'temp_bc_increment_z', diag_CS%axesTZ, &
-      Time, 'Ocean potential temperature increments predicted by ML', 'degC', conversion=US%C_to_degC)
+      Time, 'Ocean potential temperature increments predicted by OTA', 'degC', conversion=US%C_to_degC)
     endif
 
     if (CS%do_S_bias_adjustment) then
