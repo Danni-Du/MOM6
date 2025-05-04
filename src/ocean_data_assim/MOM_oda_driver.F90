@@ -464,6 +464,7 @@ subroutine init_oda(Time, G, GV, US, CS)
                 "The name of the file containing temperature and salinity "//&
                 "tendency adjustments", default='temp_salt_adjustment.nc')
 
+    call time_interp_external_init()
     inc_file = trim(inputdir) // trim(bias_correction_file)
     CS%INC_CS%T = init_extern_field(inc_file, "temp_increment", &
           correct_leap_year_inconsistency=.true.,verbose=.true.,domain=G%Domain%mpp_domain)
