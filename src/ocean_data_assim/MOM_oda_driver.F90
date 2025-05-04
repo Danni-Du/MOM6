@@ -17,7 +17,7 @@ use MOM_error_handler, only : stdout, stdlog, MOM_error
 use MOM_forcing_type, only : forcing, mech_forcing
 use MOM_io, only : SINGLE_FILE
 use MOM_interp_infra, only : init_extern_field, get_external_field_info
-use MOM_interp_infra, only : time_interp_extern
+use MOM_interp_infra, only : time_interp_extern, time_interp_extern_init
 use MOM_interpolate, only : external_field
 use MOM_remapping,    only : remappingSchemesDoc
 use MOM_time_manager, only : time_type, real_to_time, get_date
@@ -464,7 +464,7 @@ subroutine init_oda(Time, G, GV, US, CS)
                 "The name of the file containing temperature and salinity "//&
                 "tendency adjustments", default='temp_salt_adjustment.nc')
 
-    call time_interp_external_init()
+    call time_interp_extern_init()
     inc_file = trim(inputdir) // trim(bias_correction_file)
     CS%INC_CS%T = init_extern_field(inc_file, "temp_increment", &
           correct_leap_year_inconsistency=.true.,verbose=.true.,domain=G%Domain%mpp_domain)
