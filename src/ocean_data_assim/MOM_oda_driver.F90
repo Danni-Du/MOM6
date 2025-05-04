@@ -853,7 +853,21 @@ subroutine oda(Time, CS)
     
     CS%prior_ave_counter = 0.0
 
-    if (CS%do_T_bias_adjustment .or. CS%do_S_bias_adjustment) call get_bias_correction_tracer(Time, CS%US, CS)
+    if (CS%do_T_bias_adjustment .or. CS%do_S_bias_adjustment) then
+      call get_bias_correction_tracer(Time, CS%US, CS)
+      if (CS%do_T_bias_adjustment) then
+        CS%Ocean_background_ave%T(isc:iec,jsc:jec,:) = CS%Ocean_background_ave%T(isc:iec,jsc:jec,:) + &
+          CS%T_bc_tend(isc:iec,jsc:jec,:) * CS%assim_interval
+        call pass_var(CS%Ocean_background_ave%T, CS%model_G%Domain)
+      endif
+
+      if (CS%do_S_bias_adjustment) then
+        CS%Ocean_background_ave%S(isc:iec,jsc:jec,:) = CS%Ocean_background_ave%S(isc:iec,jsc:jec,:) + &
+          CS%S_bc_tend(isc:iec,jsc:jec,:) * CS%assim_interval
+        call pass_var(CS%Ocean_background_ave%S, CS%model_G%Domain)
+      endif
+
+    endif
 
     if (CS%do_T_ml_bias_adjustment .or. CS%do_S_ml_bias_adjustment) then
 
