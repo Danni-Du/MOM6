@@ -17,11 +17,11 @@ public :: oda_ml_init, oda_ml_end, oda_ml_inference
 ! Data structure to save the ML configuration, input, and output data
 type, public :: ocean_oda_ml_config ; private
     character(len=255)  :: filename
-    real, dimension(32,70)  :: l1_weight
+    real, dimension(32,54)  :: l1_weight
     real, dimension(32,32)  :: l2_weight
-    real, dimension(32,32)  :: l3_weight
+    real, dimension(16,32)  :: l3_weight
     real, dimension(32) :: l1_bias, l2_bias
-    real, dimension(32) :: l3_bias
+    real, dimension(16) :: l3_bias
     real, dimension(:), allocatable :: z_l
     real, dimension(:), allocatable :: z_i
     integer :: nk
@@ -63,7 +63,7 @@ real :: reference_depth = 10
 real :: ReLU_zero = 0
 real, dimension(15) :: target_sigmas = (/0.1,0.3,0.5,0.7,0.9,1.1,1.3,1.5,1.7,1.9,2.1,2.3,2.5,2.7,2.9/)
 real, dimension(16) :: output_flux_sigmas = (/0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4, 2.6, 2.8, 3.0/)
-character(len=255)  :: danni_ANN_name = '/gpfs/f5/gfdl_sd/world-shared/Danni.Du/ECDA_data/ML/danni_ANN_M8_ens_TzBzWmldtaufluxRiTzBzWRi_2003_2014_8epoch_6_2flux_L1.nc'
+character(len=255)  :: danni_ANN_name = '/gpfs/f5/gfdl_sd/world-shared/Danni.Du/ECDA_data/ML/danni_ANN_M8_ens_TzBzmldtaufluxRiTzBzRi_2003_2014_20epoch_6.nc'
 real :: seconds_in_30_days = 3600*24*30
 
 integer :: id_clock_ml_remapping
@@ -92,12 +92,11 @@ contains
         real, dimension(15) :: thetao_zgrad_sigma, so_zgrad_sigma, PRHO_zgrad_sigma, div_sigma, output_DT_sigmas, uo_zgrad_sigma, vo_zgrad_sigma, shear2_sigma
         real :: thetao_zgrad_sigma_dist, PRHO_zgrad_sigma_dist, div_sigma_dist, shear2_sigma_dist, coef
         real, dimension(:), allocatable :: thetao_zgrad_profile, so_zgrad_profile, div_profile, PRHO_zgrad_profile, uo_zgrad_profile, vo_zgrad_profile
-        real, dimension(70) :: ANN_input
+        real, dimension(54) :: ANN_input
         real, dimension(:), allocatable :: output_DT_at_zl, output_flux_at_zi
         real, dimension(:), allocatable :: z_l
         real, dimension(32) :: l1_output, l2_output
-        real, dimension(32) :: l3_output
-        real, dimension(16) :: l3_output_final
+        real, dimension(16) :: l3_output
         integer :: zz, i
         real :: mask_Tuv
         real :: Smin
@@ -202,12 +201,12 @@ contains
 
                     allocate(div_profile(zl_index_3mld),source=0.0)
 
-                    do zz = 1, zl_index_3mld
-                        call compute_current_divergence(ml_data%U_left(zz)*ml_data%dyCu_left, ml_data%U_right(zz)*ml_data%dyCu_right, &
-                                ml_data%V_south(zz)*ml_data%dxCv_south, ml_data%V_north(zz)*ml_data%dxCv_north, &
-                                ml_data%areacello, div)
-                        div_profile(zz) = div
-                    end do 
+                    !do zz = 1, zl_index_3mld
+                        !call compute_current_divergence(ml_data%U_left(zz)*ml_data%dyCu_left, ml_data%U_right(zz)*ml_data%dyCu_right, &
+                                !ml_data%V_south(zz)*ml_data%dxCv_south, ml_data%V_north(zz)*ml_data%dxCv_north, &
+                                !ml_data%areacello, div)
+                        !div_profile(zz) = div
+                    !end do 
             
             
                     ! interpolate values to target_sigmas
@@ -233,40 +232,37 @@ contains
                                     vo_zgrad_profile(right_index),target_sigmas(i),vo_zgrad_sigma(i))
                         end if
 
-                        call find_right_index_clean(zl_to_sigma, target_sigmas(i), right_index)
-                        if (right_index == 1) then
-                            div_sigma(i) = div_profile(1)
-                        else
-                            call interpolate(zl_to_sigma(right_index-1),zl_to_sigma(right_index),div_profile(right_index-1),div_profile(right_index),target_sigmas(i),div_sigma(i))
-                        end if
+                        !call find_right_index_clean(zl_to_sigma, target_sigmas(i), right_index)
+                        !if (right_index == 1) then
+                            !div_sigma(i) = div_profile(1)
+                        !else
+                            !call interpolate(zl_to_sigma(right_index-1),zl_to_sigma(right_index),div_profile(right_index-1),div_profile(right_index),target_sigmas(i),div_sigma(i))
+                        !end if
                     end do
                     
                     tauamp = sqrt(((ml_data%taux_left+ml_data%taux_right)/2)**2+((ml_data%tauy_south+ml_data%tauy_north)/2)**2)
 
                     ! subroutine(input,DA tendency)
-
-                    div_sigma = div_sigma * mld_depth
-
                     thetao_zgrad_sigma_dist = sqrt(sum(thetao_zgrad_sigma**2))
                     PRHO_zgrad_sigma_dist = sqrt(sum(PRHO_zgrad_sigma**2))
-                    div_sigma_dist = sqrt(sum(div_sigma**2))
+                    !div_sigma_dist = sqrt(sum(div_sigma**2))
                     shear2_sigma = uo_zgrad_sigma**2 + vo_zgrad_sigma**2
                     shear2_sigma_dist = sqrt(sum(shear2_sigma**2))
                     
                     ANN_input(1:15) = thetao_zgrad_sigma/thetao_zgrad_sigma_dist
                     ANN_input(16:30) = PRHO_zgrad_sigma/PRHO_zgrad_sigma_dist
-                    ANN_input(31:45) = div_sigma/div_sigma_dist
-                    ANN_input(46) = (log10(mld_depth) - 1.0) / 2.5
-                    ANN_input(47) = (log10(tauamp+1E-3)+1.2)/0.46
-                    ANN_input(48) = (ml_data%latent+114)/71
-                    ANN_input(49) = (ml_data%sensible+14.4)/24
-                    ANN_input(50) = (ml_data%lw+55)/21
-                    ANN_input(51) = ml_data%sw/400
-                    ANN_input(52:66) = shear2_sigma/shear2_sigma_dist
-                    ANN_input(67) = (log10(thetao_zgrad_sigma_dist)+0.8)/0.5
-                    ANN_input(68) = (log10(PRHO_zgrad_sigma_dist)+1.35)/0.55
-                    ANN_input(69) = (log10(div_sigma_dist)+4.37)/0.48
-                    ANN_input(70) = (log10(shear2_sigma_dist)+4.15)/0.86
+                    
+                    ANN_input(31) = (log10(mld_depth) - 1.0) / 2.5
+                    ANN_input(32) = (log10(tauamp+1E-3)+1.2)/0.46
+                    ANN_input(33) = (ml_data%latent+114)/71
+                    ANN_input(34) = (ml_data%sensible+14.4)/24
+                    ANN_input(35) = (ml_data%lw+55)/21
+                    ANN_input(36) = ml_data%sw/400
+                    ANN_input(37:51) = shear2_sigma/shear2_sigma_dist
+                    ANN_input(52) = (log10(thetao_zgrad_sigma_dist)+0.8)/0.5
+                    ANN_input(53) = (log10(PRHO_zgrad_sigma_dist)+1.35)/0.55
+    
+                    ANN_input(54) = (log10(shear2_sigma_dist)+4.15)/0.86
 
                     l1_output = max(ReLU_zero, matmul(ml_config%l1_weight, ANN_input) + ml_config%l1_bias)
                     l2_output = max(ReLU_zero, matmul(ml_config%l2_weight, l1_output) + ml_config%l2_bias)
@@ -275,15 +271,23 @@ contains
                     ! l3_output is the predicted flux
 
                     coef = thetao_zgrad_sigma_dist*0.1*mld_depth*(tauamp/rho0)**0.5
-                    l3_output(1:16) = l3_output(1:16) * coef
-
-                    coef = thetao_zgrad_sigma_dist*mld_depth*div_sigma_dist
-                    l3_output(17:32) = l3_output(17:32) * coef
-
-                    l3_output_final = l3_output(1:16) + l3_output(17:32)
+                    l3_output = l3_output * coef
         
-                    output_DT_sigmas =  (l3_output_final(1:15)-l3_output_final(2:16))/(0.2*mld_depth) 
+                    output_DT_sigmas =  (l3_output(1:15)-l3_output(2:16))/(0.2*mld_depth) 
                     
+                    !allocate(output_flux_at_zi(zl_index_3mld+1))
+                    !output_flux_at_zi(1) = l3_output(1)
+                    !do zz = 1, zl_index_3mld
+                        !call find_right_index_clean(output_flux_sigmas, zi_to_sigma(zz), right_index)
+                        !if (right_index == 0) then
+                            !output_flux_at_zi(zz+1) = 0.0
+                        ! it is known that right_index > 1
+                        !else
+                            !call interpolate(output_flux_sigmas(right_index-1),output_flux_sigmas(right_index),l3_output(right_index-1),&
+                                    !l3_output(right_index),zi_to_sigma(zz),output_flux_at_zi(zz+1))
+                    
+                        !end if       
+                    !end do
                 
                     allocate(output_DT_at_zl(zl_index_3mld))
                     do zz = 1, zl_index_3mld
@@ -354,13 +358,13 @@ contains
         type(ocean_oda_ml_config), pointer, intent(in) :: ml_config
 
         ! character(len=*), intent(in) :: filename
-        ! real, dimension(16,70), intent(out) :: l1_weight
+        ! real, dimension(16,54), intent(out) :: l1_weight
         ! real, dimension(16,16), intent(out) :: l2_weight, l3_weight
         ! real, dimension(16), intent(out) :: l1_bias, l2_bias, l3_bias
 
-        real, dimension(70,32)  :: l1_weight_temp
+        real, dimension(54,32)  :: l1_weight_temp
         real, dimension(32,32) :: l2_weight_temp
-        real, dimension(32,32) :: l3_weight_temp
+        real, dimension(32,16) :: l3_weight_temp
         integer :: ncid, varid, retval
         character(len = 255) :: varname
 
