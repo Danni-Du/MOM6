@@ -98,7 +98,8 @@ contains
         real, dimension(15) :: thetao_zgrad_sigma, so_zgrad_sigma, PRHO_zgrad_sigma, div_sigma, output_DT_sigmas, uo_zgrad_sigma, vo_zgrad_sigma, shear2_sigma
         real :: thetao_zgrad_sigma_dist, PRHO_zgrad_sigma_dist, div_sigma_dist, shear2_sigma_dist, coef
         real, dimension(:), allocatable :: thetao_zgrad_profile, so_zgrad_profile, div_profile, PRHO_zgrad_profile, uo_zgrad_profile, vo_zgrad_profile
-        real, dimension(33) :: ANN_input
+        real, dimension(54) :: ANN_input
+        real, dimension(33) :: ANN_input_final, exp_x
         real, dimension(8) :: encoder_output
         real, dimension(:), allocatable :: output_DT_at_zl, output_flux_at_zi
         real, dimension(:), allocatable :: z_l
@@ -106,7 +107,7 @@ contains
         real, dimension(16) :: l3_output
         integer :: zz, i
         real :: mask_Tuv
-        real :: Smin
+        real :: Smin, sum_exp
         
         ml_data%T_inc=0.0
 
@@ -266,12 +267,35 @@ contains
                     ANN_input(35) = (ml_data%lw+55)/21
                     ANN_input(36) = ml_data%sw/400
                     ANN_input(37:51) = shear2_sigma/shear2_sigma_dist
+
                     ANN_input(52) = (log10(thetao_zgrad_sigma_dist)+0.8)/0.5
                     ANN_input(53) = (log10(PRHO_zgrad_sigma_dist)+1.35)/0.55
-    
                     ANN_input(54) = (log10(shear2_sigma_dist)+4.15)/0.86
 
-                    l1_output = max(ReLU_zero, matmul(ml_config%l1_weight, ANN_input) + ml_config%l1_bias)
+                    ANN_input_final(1:6) = ANN_input(31:36)
+                    ANN_input_final(7:9) = ANN_input(52:54)
+                    
+                    call cnn_encode(ANN_input(1:15), ml_config%e1_weight1, ml_config%e1_bias1, ml_config%e1_weight2, ml_config%e1_bias2, encoder_output)
+                    ANN_input_final(10:17) = encoder_output
+                    call cnn_encode(ANN_input(16:30), ml_config%e2_weight1, ml_config%e2_bias1, ml_config%e2_weight2, ml_config%e2_bias2, encoder_output)
+                    ANN_input_final(18:25) = encoder_output
+                    call cnn_encode(ANN_input(37:51), ml_config%e3_weight1, ml_config%e3_bias1, ml_config%e3_weight2, ml_config%e3_bias2, encoder_output)
+                    ANN_input_final(26:33) = encoder_output
+
+                    ANN_input_final = matmul(ml_config%attn_weight, ANN_input_final) + ml_config%attn_bias
+
+                    do i = 1, 33
+                        exp_x(i) = exp(ANN_input_final(i))
+                    end do
+
+                    sum_exp = sum(exp_x)
+
+                    do i = 1, 33
+                        ANN_input_final(i) = exp_x(i) / sum_exp
+                    end do
+                    
+
+                    l1_output = max(ReLU_zero, matmul(ml_config%l1_weight, ANN_input_final) + ml_config%l1_bias)
                     l2_output = max(ReLU_zero, matmul(ml_config%l2_weight, l1_output) + ml_config%l2_bias)
                     l3_output = matmul(ml_config%l3_weight, l2_output) + ml_config%l3_bias
                     
