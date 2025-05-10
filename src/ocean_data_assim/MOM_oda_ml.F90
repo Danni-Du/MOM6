@@ -273,7 +273,7 @@ contains
                     coef = thetao_zgrad_sigma_dist*0.1*mld_depth*(tauamp/rho0)**0.5
                     l3_output = l3_output * coef
         
-                    output_DT_sigmas =  (l3_output(1:15)-l3_output(2:16))/(0.2*mld_depth) 
+                    output_DT_sigmas =  (l3_output(1:15)-l3_output(2:16))/(0.2*mld_depth)/1000
                     
                     !allocate(output_flux_at_zi(zl_index_3mld+1))
                     !output_flux_at_zi(1) = l3_output(1)
