@@ -17,11 +17,17 @@ public :: oda_ml_init, oda_ml_end, oda_ml_inference
 ! Data structure to save the ML configuration, input, and output data
 type, public :: ocean_oda_ml_config ; private
     character(len=255)  :: filename
-    real, dimension(32,54)  :: l1_weight
+    real, dimension(32,33)  :: l1_weight
     real, dimension(32,32)  :: l2_weight
     real, dimension(16,32)  :: l3_weight
     real, dimension(32) :: l1_bias, l2_bias
-    real, dimension(16) :: l3_bias
+    real, dimension(16) :: l3_bias, e1_bias1, e2_bias1, e3_bias1
+    real, dimension(8) :: e1_bias2, e2_bias2, e3_bias2
+    real, dimension(33) :: attn_bias
+    real, dimension(16,1,3)  :: e1_weight1, e2_weight1, e3_weight1
+    real, dimension(8,16,3)  :: e1_weight2, e2_weight2, e3_weight2
+    real, dimension(33,33)  :: attn_weight
+
     real, dimension(:), allocatable :: z_l
     real, dimension(:), allocatable :: z_i
     integer :: nk
@@ -92,7 +98,8 @@ contains
         real, dimension(15) :: thetao_zgrad_sigma, so_zgrad_sigma, PRHO_zgrad_sigma, div_sigma, output_DT_sigmas, uo_zgrad_sigma, vo_zgrad_sigma, shear2_sigma
         real :: thetao_zgrad_sigma_dist, PRHO_zgrad_sigma_dist, div_sigma_dist, shear2_sigma_dist, coef
         real, dimension(:), allocatable :: thetao_zgrad_profile, so_zgrad_profile, div_profile, PRHO_zgrad_profile, uo_zgrad_profile, vo_zgrad_profile
-        real, dimension(54) :: ANN_input
+        real, dimension(33) :: ANN_input
+        real, dimension(8) :: encoder_output
         real, dimension(:), allocatable :: output_DT_at_zl, output_flux_at_zi
         real, dimension(:), allocatable :: z_l
         real, dimension(32) :: l1_output, l2_output
@@ -353,18 +360,68 @@ contains
 
     end subroutine init_oda_ml_features
 
+    subroutine cnn_encode(input_vec, weights1, bias1, weights2, bias2, output_vec)
+        implicit none
+
+        real, dimension(15), intent(in)  :: input_vec
+        real, dimension(16), intent(in)  :: bias1
+        real, dimension(8), intent(in)  :: bias2
+        real, dimension(16, 1, 3), intent(in)  :: weights1
+        real, dimension(8, 16, 3), intent(in)  :: weights2
+        real, dimension(8), intent(out) :: output_vec
+
+        real, dimension(16, 15) :: layer1_output
+        real, dimension(8, 15) :: layer2_output
+        integer :: i, j, k
+
+        ! First conv layer: 1 → 16 channels
+        do i = 1, 16
+          do j = 1, 15
+            layer1_output(i,j) = bias1(i)
+            do k = -1,1
+              if (j+k >= 1 .and. j+k <= 15) then
+                layer1_output(i,j) = layer1_output(i,j) + weights1(i,1,k+2)*input_vec(j+k)
+              endif
+            enddo
+            if (layer1_output(i,j) < 0.0) layer1_output(i,j) = 0.0  ! ReLU
+          enddo
+        enddo
+
+        ! Second conv layer: 16 → 8 channels
+        do i = 1, 8
+          do j = 1, 15
+            layer2_output(i,j) = bias2(i)
+            do k = 1, 16
+              do l = -1,1
+                if (j+l >= 1 .and. j+l <= 15) then
+                  layer2_output(i,j) = layer2_output(i,j) + weights2(i,k,l+2)*layer1_output(k,j+l)
+                endif
+              enddo
+            enddo
+            if (layer2_output(i,j) < 0.0) layer2_output(i,j) = 0.0  ! ReLU
+          enddo
+        enddo
+
+        ! Adaptive avg pooling: avg over 15 timesteps → (8)
+        do i = 1, 8
+          output_vec(i) = sum(layer2_output(i,1:15)) / 15.0
+        enddo
+      end subroutine cnn_encode
+
+
     Subroutine read_ANN_file(ml_config)
         implicit none
         type(ocean_oda_ml_config), pointer, intent(in) :: ml_config
 
-        ! character(len=*), intent(in) :: filename
-        ! real, dimension(16,54), intent(out) :: l1_weight
-        ! real, dimension(16,16), intent(out) :: l2_weight, l3_weight
-        ! real, dimension(16), intent(out) :: l1_bias, l2_bias, l3_bias
-
-        real, dimension(54,32)  :: l1_weight_temp
+        
+        real, dimension(3,1,16)  :: e1_weight1_temp, e2_weight1_temp, e3_weight1_temp
+        real, dimension(3,16,8)  :: e1_weight2_temp, e2_weight2_temp, e3_weight2_temp
+        real, dimension(33,33)  :: attn_weight_temp
+        real, dimension(33,32)  :: l1_weight_temp
         real, dimension(32,32) :: l2_weight_temp
         real, dimension(32,16) :: l3_weight_temp
+
+
         integer :: ncid, varid, retval
         character(len = 255) :: varname
 
@@ -378,86 +435,95 @@ contains
         endif
 
         ! Get the variable ID
-        varname = 'l1_weight'
+        varname = 'vector_encoders.0.encoder.0.weight'
         retval = nf90_inq_varid(ncid, varname, varid)
-        if (retval == nf90_noerr) then
-        ! Read the dimension values
+        retval = nf90_get_var(ncid, varid, e1_weight1_temp)
+        ml_config%e1_weight1 = transpose(e1_weight1_temp)
+
+        varname = 'vector_encoders.1.encoder.0.weight'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e2_weight1_temp)
+        ml_config%e2_weight1 = transpose(e2_weight1_temp)
+
+        varname = 'vector_encoders.2.encoder.0.weight'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e3_weight1_temp)
+        ml_config%e3_weight1 = transpose(e3_weight1_temp)
+
+        varname = 'vector_encoders.0.encoder.2.weight'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e1_weight2_temp)
+        ml_config%e1_weight2 = transpose(e1_weight2_temp)
+
+        varname = 'vector_encoders.1.encoder.2.weight'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e2_weight2_temp)
+        ml_config%e2_weight2 = transpose(e2_weight2_temp)
+
+        varname = 'vector_encoders.2.encoder.2.weight'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e3_weight2_temp)
+        ml_config%e3_weight2 = transpose(e3_weight2_temp)
+
+        varname = 'attn.0.weight'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, attn_weight_temp)
+        ml_config%attn_weight = transpose(attn_weight_temp)
+
+        varname = 'mlp.0.weight'
+        retval = nf90_inq_varid(ncid, varname, varid)
         retval = nf90_get_var(ncid, varid, l1_weight_temp)
         ml_config%l1_weight = transpose(l1_weight_temp)
-        if (retval /= nf90_noerr) then
-            print *, 'Error: Unable to get l1 weight values'
-            stop
-        endif
-        else
-        print *, 'Error: l1 weight variable not found'
-        endif
 
-        varname = 'l2_weight'
+        varname = 'mlp.2.weight'
         retval = nf90_inq_varid(ncid, varname, varid)
-        if (retval == nf90_noerr) then
-        ! Read the dimension values
         retval = nf90_get_var(ncid, varid, l2_weight_temp)
         ml_config%l2_weight = transpose(l2_weight_temp)
-        if (retval /= nf90_noerr) then
-            print *, 'Error: Unable to get l2 weight values'
-            stop
-        endif
-        else
-        print *, 'Error: l2 weight variable not found'
-        endif
-
-        varname = 'l3_weight'
+        
+        varname = 'mlp.4.weight'
         retval = nf90_inq_varid(ncid, varname, varid)
-        if (retval == nf90_noerr) then
-        ! Read the dimension values
         retval = nf90_get_var(ncid, varid, l3_weight_temp)
         ml_config%l3_weight = transpose(l3_weight_temp)
-        if (retval /= nf90_noerr) then
-            print *, 'Error: Unable to get l3 weight values'
-            stop
-        endif
-        else
-        print *, 'Error: l3 weight variable not found'
-        endif
+        
 
-        varname = 'l1_bias'
+        varname = 'mlp.0.bias'
         retval = nf90_inq_varid(ncid, varname, varid)
-        if (retval == nf90_noerr) then
-        ! Read the dimension values
         retval = nf90_get_var(ncid, varid, ml_config%l1_bias)
-        if (retval /= nf90_noerr) then
-            print *, 'Error: Unable to get l1 bias values'
-            stop
-        endif
-        else
-        print *, 'Error: l1 bias variable not found'
-        endif
-
-        varname = 'l2_bias'
+        
+        varname = 'mlp.2.bias'
         retval = nf90_inq_varid(ncid, varname, varid)
-        if (retval == nf90_noerr) then
-        ! Read the dimension values
         retval = nf90_get_var(ncid, varid, ml_config%l2_bias)
-        if (retval /= nf90_noerr) then
-            print *, 'Error: Unable to get l2 bias values'
-            stop
-        endif
-        else
-        print *, 'Error: l2 bias variable not found'
-        endif
-
-        varname = 'l3_bias'
+        
+        varname = 'mlp.4.bias'
         retval = nf90_inq_varid(ncid, varname, varid)
-        if (retval == nf90_noerr) then
-        ! Read the dimension values
         retval = nf90_get_var(ncid, varid, ml_config%l3_bias)
-        if (retval /= nf90_noerr) then
-            print *, 'Error: Unable to get l3 bias values'
-            stop
-        endif
-        else
-        print *, 'Error: l3 bias variable not found'
-        endif
+
+        varname = 'vector_encoders.0.encoder.0.bias'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e1_bias1)
+        varname = 'vector_encoders.0.encoder.2.bias'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e1_bias2)
+
+        varname = 'vector_encoders.1.encoder.0.bias'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e2_bias1)
+        varname = 'vector_encoders.1.encoder.2.bias'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e2_bias2)
+
+        varname = 'vector_encoders.2.encoder.0.bias'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e3_bias1)
+        varname = 'vector_encoders.2.encoder.2.bias'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e3_bias2)
+
+        varname = 'attn.0.bias'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%attn_bias)
+
+        
 
         ! Close the NetCDF file
         retval = nf90_close(ncid)
