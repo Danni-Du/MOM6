@@ -99,7 +99,7 @@ contains
         real :: thetao_zgrad_sigma_dist, PRHO_zgrad_sigma_dist, div_sigma_dist, shear2_sigma_dist, coef
         real, dimension(:), allocatable :: thetao_zgrad_profile, so_zgrad_profile, div_profile, PRHO_zgrad_profile, uo_zgrad_profile, vo_zgrad_profile
         real, dimension(54) :: ANN_input
-        real, dimension(33) :: ANN_input_final, exp_x
+        real, dimension(33) :: ANN_input_final, exp_x, attns
         real, dimension(8) :: encoder_output
         real, dimension(:), allocatable :: output_DT_at_zl, output_flux_at_zi
         real, dimension(:), allocatable :: z_l
@@ -282,17 +282,20 @@ contains
                     call cnn_encode(ANN_input(37:51), ml_config%e3_weight1, ml_config%e3_bias1, ml_config%e3_weight2, ml_config%e3_bias2, encoder_output)
                     ANN_input_final(26:33) = encoder_output
 
-                    ANN_input_final = matmul(ml_config%attn_weight, ANN_input_final) + ml_config%attn_bias
-
+                    attns = matmul(ml_config%attn_weight, ANN_input_final) + ml_config%attn_bias
                     do i = 1, 33
-                        exp_x(i) = exp(ANN_input_final(i))
+                        exp_x(i) = exp(attns(i))
                     end do
 
                     sum_exp = sum(exp_x)
 
                     do i = 1, 33
-                        ANN_input_final(i) = exp_x(i) / sum_exp
+                        attns(i) = exp_x(i) / sum_exp
                     end do
+
+                    ANN_input_final = ANN_input_final*attns
+
+                    
                     
 
                     l1_output = max(ReLU_zero, matmul(ml_config%l1_weight, ANN_input_final) + ml_config%l1_bias)
