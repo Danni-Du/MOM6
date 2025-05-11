@@ -446,7 +446,7 @@ contains
         real, dimension(32,16) :: l3_weight_temp
 
 
-        integer :: ncid, varid, retval
+        integer :: ncid, varid, retval, i, j, k
         character(len = 255) :: varname
 
         ml_config%filename = danni_ANN_name
@@ -459,91 +459,121 @@ contains
         endif
 
         ! Get the variable ID
-        varname = 'vector_encoders.0.encoder.0.weight'
+        varname = 'e1_weight1'
         retval = nf90_inq_varid(ncid, varname, varid)
         retval = nf90_get_var(ncid, varid, e1_weight1_temp)
-        ml_config%e1_weight1 = transpose(e1_weight1_temp)
+        do i = 1, 3
+            do k = 1, 16
+                ml_config%e1_weight1(k, 1, i) = e1_weight1_temp(i, 1, k)
+            end do
+       end do
 
-        varname = 'vector_encoders.1.encoder.0.weight'
+        varname = 'e2_weight1'
         retval = nf90_inq_varid(ncid, varname, varid)
         retval = nf90_get_var(ncid, varid, e2_weight1_temp)
-        ml_config%e2_weight1 = transpose(e2_weight1_temp)
+        do i = 1, 3
+            do k = 1, 16
+                ml_config%e2_weight1(k, 1, i) = e2_weight1_temp(i, 1, k)
+            end do
+        end do
 
-        varname = 'vector_encoders.2.encoder.0.weight'
+        varname = 'e3_weight1'
         retval = nf90_inq_varid(ncid, varname, varid)
         retval = nf90_get_var(ncid, varid, e3_weight1_temp)
-        ml_config%e3_weight1 = transpose(e3_weight1_temp)
+        do i = 1, 3
+            do k = 1, 16
+                ml_config%e3_weight1(k, 1, i) = e3_weight1_temp(i, 1, k)
+            end do
+        end do
 
-        varname = 'vector_encoders.0.encoder.2.weight'
+        varname = 'e1_weight2'
         retval = nf90_inq_varid(ncid, varname, varid)
         retval = nf90_get_var(ncid, varid, e1_weight2_temp)
-        ml_config%e1_weight2 = transpose(e1_weight2_temp)
+        do i = 1, 3
+            do j = 1, 16
+                do k = 1, 8
+                    ml_config%e1_weight2(k, j, i) = e1_weight2_temp(i, j, k)
+                end do
+            end do
+        end do
 
-        varname = 'vector_encoders.1.encoder.2.weight'
+        varname = 'e2_weight2'
         retval = nf90_inq_varid(ncid, varname, varid)
         retval = nf90_get_var(ncid, varid, e2_weight2_temp)
-        ml_config%e2_weight2 = transpose(e2_weight2_temp)
+        do i = 1, 3
+            do j = 1, 16
+                do k = 1, 8
+                    ml_config%e2_weight2(k, j, i) = e2_weight2_temp(i, j, k)
+                end do
+            end do
+        end do
 
-        varname = 'vector_encoders.2.encoder.2.weight'
+        varname = 'e3_weight2'
         retval = nf90_inq_varid(ncid, varname, varid)
         retval = nf90_get_var(ncid, varid, e3_weight2_temp)
-        ml_config%e3_weight2 = transpose(e3_weight2_temp)
+        do i = 1, 3
+            do j = 1, 16
+                do k = 1, 8
+                    ml_config%e3_weight2(k, j, i) = e3_weight2_temp(i, j, k)
+                end do
+            end do
+        end do
 
-        varname = 'attn.0.weight'
+        varname = 'attn_weight'
         retval = nf90_inq_varid(ncid, varname, varid)
         retval = nf90_get_var(ncid, varid, attn_weight_temp)
         ml_config%attn_weight = transpose(attn_weight_temp)
 
-        varname = 'mlp.0.weight'
+        varname = 'l1_weight'
         retval = nf90_inq_varid(ncid, varname, varid)
         retval = nf90_get_var(ncid, varid, l1_weight_temp)
         ml_config%l1_weight = transpose(l1_weight_temp)
 
-        varname = 'mlp.2.weight'
+        varname = 'l2_weight'
         retval = nf90_inq_varid(ncid, varname, varid)
         retval = nf90_get_var(ncid, varid, l2_weight_temp)
         ml_config%l2_weight = transpose(l2_weight_temp)
         
-        varname = 'mlp.4.weight'
+        varname = 'l3_weight'
         retval = nf90_inq_varid(ncid, varname, varid)
         retval = nf90_get_var(ncid, varid, l3_weight_temp)
         ml_config%l3_weight = transpose(l3_weight_temp)
         
 
-        varname = 'mlp.0.bias'
+        varname = 'l1_bias'
         retval = nf90_inq_varid(ncid, varname, varid)
         retval = nf90_get_var(ncid, varid, ml_config%l1_bias)
         
-        varname = 'mlp.2.bias'
+        varname = 'l2_bias'
         retval = nf90_inq_varid(ncid, varname, varid)
         retval = nf90_get_var(ncid, varid, ml_config%l2_bias)
         
-        varname = 'mlp.4.bias'
+        varname = 'l3_bias'
         retval = nf90_inq_varid(ncid, varname, varid)
         retval = nf90_get_var(ncid, varid, ml_config%l3_bias)
 
-        varname = 'vector_encoders.0.encoder.0.bias'
+        varname = 'e1_bias1'
         retval = nf90_inq_varid(ncid, varname, varid)
         retval = nf90_get_var(ncid, varid, ml_config%e1_bias1)
-        varname = 'vector_encoders.0.encoder.2.bias'
+        varname = 'e1_bias2'
         retval = nf90_inq_varid(ncid, varname, varid)
         retval = nf90_get_var(ncid, varid, ml_config%e1_bias2)
 
-        varname = 'vector_encoders.1.encoder.0.bias'
+        varname = 'e2_bias1'
         retval = nf90_inq_varid(ncid, varname, varid)
         retval = nf90_get_var(ncid, varid, ml_config%e2_bias1)
-        varname = 'vector_encoders.1.encoder.2.bias'
+        varname = 'e2_bias2'
         retval = nf90_inq_varid(ncid, varname, varid)
         retval = nf90_get_var(ncid, varid, ml_config%e2_bias2)
 
-        varname = 'vector_encoders.2.encoder.0.bias'
+        varname = 'e3_bias1'
         retval = nf90_inq_varid(ncid, varname, varid)
         retval = nf90_get_var(ncid, varid, ml_config%e3_bias1)
-        varname = 'vector_encoders.2.encoder.2.bias'
+        varname = 'e3_bias2'
         retval = nf90_inq_varid(ncid, varname, varid)
         retval = nf90_get_var(ncid, varid, ml_config%e3_bias2)
 
-        varname = 'attn.0.bias'
+        varname = 'attn_bias'
         retval = nf90_inq_varid(ncid, varname, varid)
         retval = nf90_get_var(ncid, varid, ml_config%attn_bias)
 
