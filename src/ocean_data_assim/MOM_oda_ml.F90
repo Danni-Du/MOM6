@@ -396,7 +396,7 @@ contains
 
         real, dimension(16, 15) :: layer1_output
         real, dimension(8, 15) :: layer2_output
-        integer :: i, j, k
+        integer :: i, j, k, l
 
         ! First conv layer: 1 → 16 channels
         do i = 1, 16
