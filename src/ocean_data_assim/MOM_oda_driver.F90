@@ -992,56 +992,51 @@ subroutine get_ML_bias_correction(Time, US, CS)
   !! Loop through all local gridpoints
   do j=jsc,jec ; do i=isc,iec
 
-    if (CS%model_G%geolatT(i,j) > 60.0 .or. CS%model_G%geolatT(i,j) < -60.0) then
-      CS%T_ml_tend(i,j,:) = 0.0
-      CS%S_ml_tend(i,j,:) = 0.0
-    else
-      !! put local variables into ml_data
-      CS%ml_data%T = CS%Ocean_background_ave%T(i,j,:)
-      CS%ml_data%S = CS%Ocean_background_ave%S(i,j,:)
-      CS%ml_data%U_left = CS%Ocean_background_ave%U(i-1,j,:)
-      CS%ml_data%U_right = CS%Ocean_background_ave%U(i,j,:)
-      CS%ml_data%V_north = CS%Ocean_background_ave%V(i,j,:)
-      CS%ml_data%V_south = CS%Ocean_background_ave%V(i,j-1,:)
-      CS%ml_data%latent = CS%Ocean_background_ave%latent(i,j)
-      CS%ml_data%sensible = CS%Ocean_background_ave%sensible(i,j)
-      CS%ml_data%lw = CS%Ocean_background_ave%lw(i,j)
-      CS%ml_data%sw = CS%Ocean_background_ave%sw(i,j)
-      CS%ml_data%taux_left = CS%Ocean_background_ave%taux(i-1,j)
-      CS%ml_data%taux_right = CS%Ocean_background_ave%taux(i,j)
-      CS%ml_data%tauy_north = CS%Ocean_background_ave%tauy(i,j)
-      CS%ml_data%tauy_south = CS%Ocean_background_ave%tauy(i,j-1)
+    !! put local variables into ml_data
+    CS%ml_data%T = CS%Ocean_background_ave%T(i,j,:)
+    CS%ml_data%S = CS%Ocean_background_ave%S(i,j,:)
+    CS%ml_data%U_left = CS%Ocean_background_ave%U(i-1,j,:)
+    CS%ml_data%U_right = CS%Ocean_background_ave%U(i,j,:)
+    CS%ml_data%V_north = CS%Ocean_background_ave%V(i,j,:)
+    CS%ml_data%V_south = CS%Ocean_background_ave%V(i,j-1,:)
+    CS%ml_data%latent = CS%Ocean_background_ave%latent(i,j)
+    CS%ml_data%sensible = CS%Ocean_background_ave%sensible(i,j)
+    CS%ml_data%lw = CS%Ocean_background_ave%lw(i,j)
+    CS%ml_data%sw = CS%Ocean_background_ave%sw(i,j)
+    CS%ml_data%taux_left = CS%Ocean_background_ave%taux(i-1,j)
+    CS%ml_data%taux_right = CS%Ocean_background_ave%taux(i,j)
+    CS%ml_data%tauy_north = CS%Ocean_background_ave%tauy(i,j)
+    CS%ml_data%tauy_south = CS%Ocean_background_ave%tauy(i,j-1)
       
-      CS%ml_data%dyCu_left = CS%model_G%dyCu(i-1,j)
-      CS%ml_data%dyCu_right = CS%model_G%dyCu(i,j)
-      CS%ml_data%dxCv_north = CS%model_G%dxCv(i,j)
-      CS%ml_data%dxCv_south = CS%model_G%dxCv(i,j-1)
-      CS%ml_data%areacello = CS%model_G%areaT(i,j)
+    CS%ml_data%dyCu_left = CS%model_G%dyCu(i-1,j)
+    CS%ml_data%dyCu_right = CS%model_G%dyCu(i,j)
+    CS%ml_data%dxCv_north = CS%model_G%dxCv(i,j)
+    CS%ml_data%dxCv_south = CS%model_G%dxCv(i,j-1)
+    CS%ml_data%areacello = CS%model_G%areaT(i,j)
       
-      CS%ml_data%bathyT = CS%model_G%bathyT(i,j)
-      CS%ml_data%bathyU_left = (CS%model_G%bathyT(i-1,j)+CS%model_G%bathyT(i,j))/2
-      CS%ml_data%bathyU_right = (CS%model_G%bathyT(i,j)+CS%model_G%bathyT(i+1,j))/2
-      CS%ml_data%bathyV_south = (CS%model_G%bathyT(i,j-1)+CS%model_G%bathyT(i,j))/2
-      CS%ml_data%bathyV_north = (CS%model_G%bathyT(i,j)+CS%model_G%bathyT(i,j+1))/2
+    CS%ml_data%bathyT = CS%model_G%bathyT(i,j)
+    CS%ml_data%bathyU_left = (CS%model_G%bathyT(i-1,j)+CS%model_G%bathyT(i,j))/2
+    CS%ml_data%bathyU_right = (CS%model_G%bathyT(i,j)+CS%model_G%bathyT(i+1,j))/2
+    CS%ml_data%bathyV_south = (CS%model_G%bathyT(i,j-1)+CS%model_G%bathyT(i,j))/2
+    CS%ml_data%bathyV_north = (CS%model_G%bathyT(i,j)+CS%model_G%bathyT(i,j+1))/2
 
-      CS%ml_data%mask2dT = CS%model_G%mask2dT(i,j)
-      CS%ml_data%OBCmaskCu_left = CS%model_G%OBCmaskCu(i-1,j)
-      CS%ml_data%OBCmaskCu_right = CS%model_G%OBCmaskCu(i,j)
-      CS%ml_data%OBCmaskCv_south = CS%model_G%OBCmaskCv(i,j-1)
-      CS%ml_data%OBCmaskCv_north = CS%model_G%OBCmaskCu(i,j)
+    CS%ml_data%mask2dT = CS%model_G%mask2dT(i,j)
+    CS%ml_data%OBCmaskCu_left = CS%model_G%OBCmaskCu(i-1,j)
+    CS%ml_data%OBCmaskCu_right = CS%model_G%OBCmaskCu(i,j)
+    CS%ml_data%OBCmaskCv_south = CS%model_G%OBCmaskCv(i,j-1)
+    CS%ml_data%OBCmaskCv_north = CS%model_G%OBCmaskCu(i,j)
 
-      !! Call inference subroutine with the concatenated vector
-      call oda_ml_inference(CS%ml_config, CS%ml_data)
+    !! Call inference subroutine with the concatenated vector
+    call oda_ml_inference(CS%ml_config, CS%ml_data)
 
-      CS%T_ml_tend(i,j,:) = CS%ml_data%T_inc * CS%T_ml_bias_adjustment_multiplier
-      CS%S_ml_tend(i,j,:) = CS%ml_data%S_inc * CS%S_ml_bias_adjustment_multiplier
+    CS%T_ml_tend(i,j,:) = CS%ml_data%T_inc * CS%T_ml_bias_adjustment_multiplier
+    CS%S_ml_tend(i,j,:) = CS%ml_data%S_inc * CS%S_ml_bias_adjustment_multiplier
 
-      do k=1,CS%nk
-        if (CS%T_ml_tend(i,j,k) > 1.0E-5*US%degC_to_C) CS%T_ml_tend(i,j,k) = 1.0E-5
-        if (CS%T_ml_tend(i,j,k) < -1.0E-5*US%degC_to_C) CS%T_ml_tend(i,j,k) = -1.0E-5
-      enddo
+    do k=1,CS%nk
+      if (CS%T_ml_tend(i,j,k) > 1.0E-5*US%degC_to_C) CS%T_ml_tend(i,j,k) = 1.0E-5
+      if (CS%T_ml_tend(i,j,k) < -1.0E-5*US%degC_to_C) CS%T_ml_tend(i,j,k) = -1.0E-5
+    enddo
 
-    endif
   enddo; enddo
 
   call pass_var(CS%T_ml_tend, CS%domains(CS%ensemble_id))
