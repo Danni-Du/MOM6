@@ -119,6 +119,8 @@ contains
             ml_data%T_inc=0.0
         elseif (Smin < 0.0) then
             ml_data%T_inc=0.0
+        elseif (ml_data%T(1) < -0.054*ml_data%S(1)) then
+            ml_data%T_inc=0.0
         else
             allocate(z_l(ml_config%nk),source=0.0)
             z_l = ml_config%z_l
