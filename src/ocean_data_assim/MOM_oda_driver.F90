@@ -1015,16 +1015,41 @@ subroutine get_ML_bias_correction(Time, US, CS)
     CS%ml_data%areacello = CS%model_G%areaT(i,j)
       
     CS%ml_data%bathyT = CS%model_G%bathyT(i,j)
+    CS%ml_data%bathyT_left = CS%model_G%bathyT(i-1,j)
+    CS%ml_data%bathyT_right = CS%model_G%bathyT(i+1,j)
+    CS%ml_data%bathyT_south = CS%model_G%bathyT(i,j-1)
+    CS%ml_data%bathyT_north = CS%model_G%bathyT(i,j+1)
     CS%ml_data%bathyU_left = (CS%model_G%bathyT(i-1,j)+CS%model_G%bathyT(i,j))/2
     CS%ml_data%bathyU_right = (CS%model_G%bathyT(i,j)+CS%model_G%bathyT(i+1,j))/2
     CS%ml_data%bathyV_south = (CS%model_G%bathyT(i,j-1)+CS%model_G%bathyT(i,j))/2
     CS%ml_data%bathyV_north = (CS%model_G%bathyT(i,j)+CS%model_G%bathyT(i,j+1))/2
+    CS%ml_data%bathyU_left_south = (CS%model_G%bathyT(i-1,j-1)+CS%model_G%bathyT(i,j-1))/2
+    CS%ml_data%bathyU_left_north = (CS%model_G%bathyT(i-1,j+1)+CS%model_G%bathyT(i,j+1))/2
+    CS%ml_data%bathyU_right_south = (CS%model_G%bathyT(i,j-1)+CS%model_G%bathyT(i+1,j-1))/2
+    CS%ml_data%bathyU_right_north = (CS%model_G%bathyT(i,j+1)+CS%model_G%bathyT(i+1,j+1))/2
+    CS%ml_data%bathyV_south_left = (CS%model_G%bathyT(i-1,j-1)+CS%model_G%bathyT(i-1,j))/2
+    CS%ml_data%bathyV_south_right = (CS%model_G%bathyT(i+1,j-1)+CS%model_G%bathyT(i+1,j))/2
+    CS%ml_data%bathyV_north_left = (CS%model_G%bathyT(i-1,j)+CS%model_G%bathyT(i-1,j+1))/2
+    CS%ml_data%bathyV_north_right = (CS%model_G%bathyT(i+1,j)+CS%model_G%bathyT(i+1,j+1))/2
 
     CS%ml_data%mask2dT = CS%model_G%mask2dT(i,j)
+    CS%ml_data%mask2dT_left = CS%model_G%mask2dT(i-1,j)
+    CS%ml_data%mask2dT_right = CS%model_G%mask2dT(i+1,j)
+    CS%ml_data%mask2dT_south = CS%model_G%mask2dT(i,j-1)
+    CS%ml_data%mask2dT_north = CS%model_G%mask2dT(i,j+1)
     CS%ml_data%OBCmaskCu_left = CS%model_G%OBCmaskCu(i-1,j)
     CS%ml_data%OBCmaskCu_right = CS%model_G%OBCmaskCu(i,j)
     CS%ml_data%OBCmaskCv_south = CS%model_G%OBCmaskCv(i,j-1)
-    CS%ml_data%OBCmaskCv_north = CS%model_G%OBCmaskCu(i,j)
+    CS%ml_data%OBCmaskCv_north = CS%model_G%OBCmaskCv(i,j)
+    CS%ml_data%OBCmaskCu_left_south = CS%model_G%OBCmaskCu(i-1,j-1)
+    CS%ml_data%OBCmaskCu_left_north = CS%model_G%OBCmaskCu(i-1,j+1)
+    CS%ml_data%OBCmaskCu_right_south = CS%model_G%OBCmaskCu(i,j-1)
+    CS%ml_data%OBCmaskCu_right_north = CS%model_G%OBCmaskCu(i,j+1)
+    CS%ml_data%OBCmaskCv_south_left = CS%model_G%OBCmaskCv(i-1,j-1)
+    CS%ml_data%OBCmaskCv_south_right = CS%model_G%OBCmaskCv(i+1,j-1)
+    CS%ml_data%OBCmaskCv_north_left = CS%model_G%OBCmaskCv(i-1,j)
+    CS%ml_data%OBCmaskCv_north_left = CS%model_G%OBCmaskCv(i+1,j)
+
     CS%ml_data%geoLatT = CS%model_G%geoLatT(i,j)
 
     CS%ml_data%T_left = CS%Ocean_background_ave%T(i-1,j,:)
