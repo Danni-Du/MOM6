@@ -17,16 +17,19 @@ public :: oda_ml_init, oda_ml_end, oda_ml_inference
 ! Data structure to save the ML configuration, input, and output data
 type, public :: ocean_oda_ml_config ; private
     character(len=255)  :: filename
-    real, dimension(32,33)  :: l1_weight
+    real, dimension(32,34)  :: l1_weight
     real, dimension(32,32)  :: l2_weight
-    real, dimension(16,32)  :: l3_weight
-    real, dimension(32) :: l1_bias, l2_bias
-    real, dimension(16) :: l3_bias, e1_bias1, e2_bias1, e3_bias1
-    real, dimension(8) :: e1_bias2, e2_bias2, e3_bias2
-    real, dimension(33) :: attn_bias
+    real, dimension(8,32)  :: l3_weight
+    real, dimension(32) :: l1_bias, l2_bias, attn_bias1
+    real, dimension(8) :: l3_bias
+    real, dimension(16) :: e1_bias1, e2_bias1, e3_bias1
+    real, dimension(8) :: e1_bias2, e2_bias2, e3_bias2, d_bias2
+    real, dimension(34) :: attn_bias2
+    real, dimension(128) :: d_bias1
+    real :: d_bias3
     real, dimension(16,1,3)  :: e1_weight1, e2_weight1, e3_weight1
     real, dimension(8,16,3)  :: e1_weight2, e2_weight2, e3_weight2
-    real, dimension(33,33)  :: attn_weight
+    real, dimension(34,34)  :: attn_weight
 
     real, dimension(:), allocatable :: z_l
     real, dimension(:), allocatable :: z_i
@@ -130,14 +133,18 @@ contains
         real, dimension(15) :: thetao_zgrad_sigma, so_zgrad_sigma, PRHO_zgrad_sigma, div_sigma, output_DT_sigmas, uo_zgrad_sigma, vo_zgrad_sigma, shear2_sigma
         real :: thetao_zgrad_sigma_dist, PRHO_zgrad_sigma_dist, div_sigma_dist, shear2_sigma_dist, coef
         real, dimension(:), allocatable :: thetao_zgrad_profile, so_zgrad_profile, div_profile, PRHO_zgrad_profile, uo_zgrad_profile, vo_zgrad_profile
-        real, dimension(54) :: ANN_input
-        real, dimension(33) :: ANN_input_final, exp_x, attns
+        real, dimension(55) :: ANN_input
+        real, dimension(34) :: ANN_input_final, exp_x, attns
         real, dimension(8) :: encoder_output
         real, dimension(:), allocatable :: output_DT_at_zl, output_flux_at_zi
         real, dimension(:), allocatable :: z_l
-        real, dimension(32) :: l1_output, l2_output
-        real, dimension(16) :: l3_output
-        integer :: zz, i
+        real, dimension(32) :: l1_output, l2_output, attns1
+        real, dimension(8) :: l3_output
+        real, dimension(16) :: flux_output
+        real, dimension(128) :: d_output1
+        real, dimension(16,8) :: d_output1_reshaped
+        real, dimension(8,16) :: decoder_output
+        integer :: zz, i, j, idx, k
         real :: mask_Tuv
         real :: Smin, sum_exp
         real :: pi
@@ -321,7 +328,8 @@ contains
                     call cnn_encode(ANN_input(37:51), ml_config%e3_weight1, ml_config%e3_bias1, ml_config%e3_weight2, ml_config%e3_bias2, encoder_output)
                     ANN_input_final(27:34) = encoder_output
 
-                    attns = matmul(ml_config%attn_weight, ANN_input_final) + ml_config%attn_bias
+                    attns1 = max(ReLU_zero, matmul(ml_config%attn_weight1, ANN_input_final) + ml_config%attn_bias1)
+                    attns = matmul(ml_config%attn_weight2, attns1) + ml_config%attn_bias2
                     do i = 1, 33
                         exp_x(i) = exp(attns(i))
                     end do
@@ -334,9 +342,6 @@ contains
 
                     ANN_input_final = ANN_input_final*attns
 
-                    
-                    
-
                     l1_output = max(ReLU_zero, matmul(ml_config%l1_weight, ANN_input_final) + ml_config%l1_bias)
                     l2_output = max(ReLU_zero, matmul(ml_config%l2_weight, l1_output) + ml_config%l2_bias)
                     l3_output = matmul(ml_config%l3_weight, l2_output) + ml_config%l3_bias
@@ -344,6 +349,37 @@ contains
                     ! l3_output is the latent output
 
                     !decoder: from l3_output to flux_output
+                    d_output1 = max(ReLU_zero, matmul(ml_config%d_weight1, l3_output) + ml_config%d_bias1)
+                    idx = 1
+                    do i = 1, 16       ! rows
+                        do j = 1, 8     ! columns
+                            d_output1_reshaped(i, j) = d_output1(idx)
+                            idx = idx + 1
+                        end do
+                    end do
+                    call transposed_conv1d(d_output1_reshaped, ml_config%d_weight2, ml_config%d_bias2, decoder_output)
+                    do i = 1, 8       ! rows
+                        do j = 1, 16     ! columns
+                            if (decoder_output(i,j) < 0.0) decoder_output(i,j) = 0.0
+                        end do
+                    end do
+                    ! Final conv1d
+                    ! Second conv layer: 16 → 8 channels (8 to 1)
+                    
+                      
+                    
+                    do j = 1, 16
+                        flux_output = ml_config%d_bias3
+                        do k = 1, 8
+                            do l = -1,1
+                            if (j+l >= 1 .and. j+l <= 16) then
+                                layer2_output(j) = layer2_output(j) + ml_config%d_weight3(1,k,l+2)*layer1_output(k,j+l)
+                            endif
+                            enddo
+                        enddo
+                    enddo
+                
+                   
 
                     coef = thetao_zgrad_sigma_dist*0.1*mld_depth*(tauamp/rho0)**0.5
                     flux_output = flux_output * coef
@@ -503,10 +539,14 @@ contains
         
         real, dimension(3,1,16)  :: e1_weight1_temp, e2_weight1_temp, e3_weight1_temp
         real, dimension(3,16,8)  :: e1_weight2_temp, e2_weight2_temp, e3_weight2_temp
-        real, dimension(33,33)  :: attn_weight_temp
-        real, dimension(33,32)  :: l1_weight_temp
+        real, dimension(34,32)  :: attn_weight1_temp
+        real, dimension(32,34)  :: attn_weight2_temp
+        real, dimension(34,32)  :: l1_weight_temp
         real, dimension(32,32) :: l2_weight_temp
-        real, dimension(32,16) :: l3_weight_temp
+        real, dimension(32,8) :: l3_weight_temp
+        real, dimension(8,128) :: d_weight1_temp
+        real, dimension(3,8,16)  :: d_weight2_temp
+        real, dimension(3,8,1)  :: d_weight3_temp
 
 
         integer :: ncid, varid, retval, i, j, k
@@ -582,10 +622,37 @@ contains
             end do
         end do
 
-        varname = 'attn_weight'
+        varname = 'd_weight2'
         retval = nf90_inq_varid(ncid, varname, varid)
-        retval = nf90_get_var(ncid, varid, attn_weight_temp)
-        ml_config%attn_weight = transpose(attn_weight_temp)
+        retval = nf90_get_var(ncid, varid, d_weight2_temp)
+        do i = 1, 3
+            do j = 1, 8
+                do k = 1, 16
+                    ml_config%d_weight2(k, j, i) = d_weight2_temp(i, j, k)
+                end do
+            end do
+        end do
+
+        varname = 'd_weight3'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, d_weight3_temp)
+        do i = 1, 3
+            do j = 1, 8
+               ml_config%d_weight3(1, j, i) = d_weight3_temp(i, j, 1)
+            end do
+        end do
+        
+
+
+        varname = 'attn_weight1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, attn_weight1_temp)
+        ml_config%attn_weight1 = transpose(attn_weight1_temp)
+
+        varname = 'attn_weight2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, attn_weight2_temp)
+        ml_config%attn_weight2 = transpose(attn_weight2_temp)
 
         varname = 'l1_weight'
         retval = nf90_inq_varid(ncid, varname, varid)
@@ -636,9 +703,25 @@ contains
         retval = nf90_inq_varid(ncid, varname, varid)
         retval = nf90_get_var(ncid, varid, ml_config%e3_bias2)
 
-        varname = 'attn_bias'
+        varname = 'attn_bias1'
         retval = nf90_inq_varid(ncid, varname, varid)
-        retval = nf90_get_var(ncid, varid, ml_config%attn_bias)
+        retval = nf90_get_var(ncid, varid, ml_config%attn_bias1)
+
+        varname = 'attn_bias2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%attn_bias2)
+
+        varname = 'd_bias1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%d_bias1)
+
+        varname = 'd_bias2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%d_bias2)
+
+        varname = 'd_bias3'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%d_bias3)
 
         
 
