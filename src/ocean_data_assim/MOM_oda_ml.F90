@@ -334,13 +334,13 @@ contains
 
                     attns1 = max(ReLU_zero, matmul(ml_config%attn_weight1, ANN_input_final) + ml_config%attn_bias1)
                     attns = matmul(ml_config%attn_weight2, attns1) + ml_config%attn_bias2
-                    do i = 1, 33
+                    do i = 1, 34
                         exp_x(i) = exp(attns(i))
                     end do
 
                     sum_exp = sum(exp_x)
 
-                    do i = 1, 33
+                    do i = 1, 34
                         attns(i) = exp_x(i) / sum_exp
                     end do
 
