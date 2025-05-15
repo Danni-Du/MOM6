@@ -29,7 +29,11 @@ type, public :: ocean_oda_ml_config ; private
     real :: d_bias3
     real, dimension(16,1,3)  :: e1_weight1, e2_weight1, e3_weight1
     real, dimension(8,16,3)  :: e1_weight2, e2_weight2, e3_weight2
-    real, dimension(34,34)  :: attn_weight
+    real, dimension(32,34)  :: attn_weight1
+    real, dimension(32,32)  :: attn_weight2
+    real, dimension(128,8)  :: d_weight1
+    real, dimension(16,8,3)  :: d_weight2
+    real, dimension(1,8,3)  :: d_weight3
 
     real, dimension(:), allocatable :: z_l
     real, dimension(:), allocatable :: z_i
