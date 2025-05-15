@@ -377,7 +377,7 @@ contains
                         do k = 1, 8
                             do l = -1,1
                             if (j+l >= 1 .and. j+l <= 16) then
-                                layer2_output(j) = layer2_output(j) + ml_config%d_weight3(1,k,l+2)*layer1_output(k,j+l)
+                                flux_output(j) = flux_output(j) + ml_config%d_weight3(1,k,l+2)*decoder_output(k,j+l)
                             endif
                             enddo
                         enddo
