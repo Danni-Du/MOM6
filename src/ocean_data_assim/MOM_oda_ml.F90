@@ -329,7 +329,7 @@ contains
                     ANN_input_final(11:18) = encoder_output
                     call cnn_encode(ANN_input(16:30), ml_config%e2_weight1, ml_config%e2_bias1, ml_config%e2_weight2, ml_config%e2_bias2, encoder_output)
                     ANN_input_final(19:26) = encoder_output
-                    call cnn_encode(ANN_input(37:51), ml_config%e3_weight1, ml_config%e3_bias1, ml_config%e3_weight2, ml_config%e3_bias2, encoder_output)
+                    call cnn_encode(ANN_input(38:52), ml_config%e3_weight1, ml_config%e3_bias1, ml_config%e3_weight2, ml_config%e3_bias2, encoder_output)
                     ANN_input_final(27:34) = encoder_output
 
                     attns1 = max(ReLU_zero, matmul(ml_config%attn_weight1, ANN_input_final) + ml_config%attn_bias1)
@@ -367,13 +367,11 @@ contains
                             if (decoder_output(i,j) < 0.0) decoder_output(i,j) = 0.0
                         end do
                     end do
-                    ! Final conv1d
-                    ! Second conv layer: 16 → 8 channels (8 to 1)
-                    
-                      
+                    ! Final conv1d channels (8 to 1)
+                   
                     
                     do j = 1, 16
-                        flux_output = ml_config%d_bias3
+                        flux_output(j) = ml_config%d_bias3
                         do k = 1, 8
                             do l = -1,1
                             if (j+l >= 1 .and. j+l <= 16) then
