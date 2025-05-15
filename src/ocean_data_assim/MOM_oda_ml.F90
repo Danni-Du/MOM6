@@ -36,8 +36,20 @@ end type ocean_oda_ml_config
 type, public :: ocean_oda_ml_data
     integer :: nk
     real :: dyCu_left, dyCu_right, dxCv_south, dxCv_north, areacello
+    real :: dxCu_left, dxCu_right, dyCv_north, dyCv_south
+    real :: areacellobu_left_south, areacellobu_left_north, areacellobu_right_south, areacellobu_right_north
+    real :: dxCu_left_south, dxCu_left_north, dxCu_right_south, dxCu_right_north
+    real :: dyCv_north_left, dyCv_north_right, dyCv_south_left, dyCv_south_right
     real :: bathyT, bathyU_left, bathyU_right, bathyV_south, bathyV_north
-    real :: mask2dT, OBCmaskCu_left, OBCmaskCu_right, OBCmaskCv_south, OBCmaskCv_north 
+    real :: bathyT_left, bathyT_right, bathyT_south, bathyT_north
+    real :: bathyU_left_south, bathyU_left_north, bathyU_right_south, bathyU_right_north
+    real :: bathyV_south_left, bathyV_south_right, bathyV_north_left, bathyV_north_right
+    real :: mask2dT, OBCmaskCu_left, OBCmaskCu_right, OBCmaskCv_south, OBCmaskCv_north
+    real :: mask2dT_left, mask2dT_right, mask2dT_north, mask2dT_south
+    real :: OBCmaskCu_left_south, OBCmaskCu_left_north, OBCmaskCu_right_south, OBCmaskCu_right_north
+    real :: OBCmaskCv_south_left, OBCmaskCv_south_right, OBCmaskCv_north_left, OBCmaskCv_north_right
+    real :: geoLatT
+
     !! Input features
     real :: SSH !<sea surface height (m) across ensembles
     real :: taux_left !<zonal wind stress
@@ -54,6 +66,26 @@ type, public :: ocean_oda_ml_data
     real, pointer, dimension(:) :: U_right=>NULL() !<layer zonal velocity (m s-1) across ensembles
     real, pointer, dimension(:) :: V_north=>NULL() !<layer meridional velocity (m s-1) across ensembles
     real, pointer, dimension(:) :: V_south=>NULL() !<layer meridional velocity (m s-1) across ensembles
+    real, pointer, dimension(:) :: T_left=>NULL() !<layer potential temperature (degC) across ensembles
+    real, pointer, dimension(:) :: T_right=>NULL() !<layer potential temperature (degC) across ensembles
+    real, pointer, dimension(:) :: T_south=>NULL() !<layer potential temperature (degC) across ensembles
+    real, pointer, dimension(:) :: T_north=>NULL() !<layer potential temperature (degC) across ensembles
+    real, pointer, dimension(:) :: S_left=>NULL() !<layer salinity (psu or g kg-1) across ensembles
+    real, pointer, dimension(:) :: S_right=>NULL() !<layer salinity (psu or g kg-1) across ensembles
+    real, pointer, dimension(:) :: S_south=>NULL() !<layer salinity (psu or g kg-1) across ensembles
+    real, pointer, dimension(:) :: S_north=>NULL() !<layer salinity (psu or g kg-1) across ensembles
+    real, pointer, dimension(:) :: U_left_south=>NULL() !<layer zonal velocity (m s-1) across ensembles
+    real, pointer, dimension(:) :: U_left_north=>NULL() !<layer zonal velocity (m s-1) across ensembles
+    real, pointer, dimension(:) :: U_right_south=>NULL() !<layer zonal velocity (m s-1) across ensembles
+    real, pointer, dimension(:) :: U_right_north=>NULL() !<layer zonal velocity (m s-1) across ensembles
+    real, pointer, dimension(:) :: V_north_left=>NULL() !<layer meridional velocity (m s-1) across ensembles
+    real, pointer, dimension(:) :: V_north_right=>NULL() !<layer meridional velocity (m s-1) across ensembles
+    real, pointer, dimension(:) :: V_south_left=>NULL() !<layer meridional velocity (m s-1) across ensembles
+    real, pointer, dimension(:) :: V_south_right=>NULL() !<layer meridional velocity (m s-1) across ensembles
+    real :: taux_left_south, taux_left_north !<zonal wind stress
+    real :: taux_right_south, taux_right_north !<zonal wind stress
+    real :: tauy_north_left, tauy_north_right !<meridional wind stress
+    real :: tauy_south_left, tauy_south_right !<zonal wind stress
 
     !! Output predictions
     real, pointer, dimension(:) :: T_inc=>NULL()
