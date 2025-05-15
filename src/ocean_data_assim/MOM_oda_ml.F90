@@ -148,7 +148,7 @@ contains
         real, dimension(128) :: d_output1
         real, dimension(16,8) :: d_output1_reshaped
         real, dimension(8,16) :: decoder_output
-        integer :: zz, i, j, idx, k
+        integer :: zz, i, j, idx, k, l
         real :: mask_Tuv
         real :: Smin, sum_exp
         real :: pi
