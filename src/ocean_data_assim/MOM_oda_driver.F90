@@ -1048,7 +1048,7 @@ subroutine get_ML_bias_correction(Time, US, CS)
     CS%ml_data%OBCmaskCv_south_left = CS%model_G%OBCmaskCv(i-1,j-1)
     CS%ml_data%OBCmaskCv_south_right = CS%model_G%OBCmaskCv(i+1,j-1)
     CS%ml_data%OBCmaskCv_north_left = CS%model_G%OBCmaskCv(i-1,j)
-    CS%ml_data%OBCmaskCv_north_left = CS%model_G%OBCmaskCv(i+1,j)
+    CS%ml_data%OBCmaskCv_north_right = CS%model_G%OBCmaskCv(i+1,j)
 
     CS%ml_data%geoLatT = CS%model_G%geoLatT(i,j)
 
