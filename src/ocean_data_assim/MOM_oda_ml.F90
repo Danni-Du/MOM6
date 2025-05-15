@@ -152,6 +152,8 @@ contains
         real :: mask_Tuv
         real :: Smin, sum_exp
         real :: pi
+        real, dimension(17) :: all_bathy, all_mask
+
 
         
         
@@ -404,6 +406,27 @@ contains
                     end do
 
                     ml_data%T_inc(1:zl_index_3mld) = output_DT_at_zl
+
+                    
+                    all_bathy = (/ ml_data%bathyT, ml_data%bathyU_left, ml_data%bathyU_right, ml_data%bathyV_south, bml_data%athyV_north, &
+                               ml_data%bathyT_left, ml_data%bathyT_right, ml_data%bathyT_south, ml_data%bathyT_north, &
+                               ml_data%bathyU_left_south, ml_data%bathyU_left_north, ml_data%bathyU_right_south, ml_data%bathyU_right_north, &
+                               ml_data%bathyV_south_left, ml_data%bathyV_south_right, ml_data%bathyV_north_left, ml_data%bathyV_north_right /)
+                    
+                    all_mask = (/ ml_data%mask2dT, ml_data%OBCmaskCu_left, ml_data%OBCmaskCu_right, ml_data%OBCmaskCv_south, ml_data%OBCmaskCv_north, &
+                               ml_data%mask2dT_left, ml_data%mask2dT_right, ml_data%mask2dT_south, ml_data%mask2dT_north, &
+                               ml_data%OBCmaskCu_left_south, ml_data%OBCmaskCu_left_north, ml_data%OBCmaskCu_right_south, ml_data%OBCmaskCu_right_north, &
+                               ml_data%OBCmaskCv_south_left, ml_data%OBCmaskCv_south_right, ml_data%OBCmaskCv_north_left, ml_data%OBCmaskCv_north_right /)
+
+
+
+                    if (MINVAL(all_bathy) > 1045 .and. MINVAL(all_mask) > 0) then
+                        ! compute all variables
+                        ! do ann2 inference
+                    endif
+
+
+
                 endif
             endif ! end if 3 mld exceeds total number of levels
         
