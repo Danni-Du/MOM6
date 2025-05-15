@@ -101,7 +101,7 @@ real :: reference_depth = 10
 real :: ReLU_zero = 0
 real, dimension(15) :: target_sigmas = (/0.1,0.3,0.5,0.7,0.9,1.1,1.3,1.5,1.7,1.9,2.1,2.3,2.5,2.7,2.9/)
 real, dimension(16) :: output_flux_sigmas = (/0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4, 2.6, 2.8, 3.0/)
-character(len=255)  :: danni_ANN_name = '/gpfs/f5/gfdl_sd/world-shared/Danni.Du/ECDA_data/ML/dev6.1_2003_2005_20epoch_updating.nc'
+character(len=255)  :: danni_ANN_name = '/gpfs/f5/gfdl_sd/world-shared/Danni.Du/ECDA_data/ML/M8/M8_ens_attention_encoder_decoder_2003_2014_30epoch_L1.nc'
 real :: seconds_in_30_days = 3600*24*30
 
 integer :: id_clock_ml_remapping
@@ -140,10 +140,14 @@ contains
         integer :: zz, i
         real :: mask_Tuv
         real :: Smin, sum_exp
+        real :: pi
+
+        
         
         ml_data%T_inc=0.0
 
         rho0 = 1035
+        pi = acos(-1.0)
         
         mask_Tuv = ml_data%mask2dT + ml_data%OBCmaskCu_left + ml_data%OBCmaskCu_right + ml_data%OBCmaskCv_south + ml_data%OBCmaskCv_north
         Smin = MINVAL(ml_data%S)
@@ -201,8 +205,8 @@ contains
                 if (z_l(zl_index_3mld+1) > ml_data%bathyT .OR. &
                     z_l(zl_index_3mld+1) > ml_data%bathyU_left .OR. &
                     z_l(zl_index_3mld+1) > ml_data%bathyU_right .OR. &
-                    z_l(zl_index_3mld) > ml_data%bathyV_south .OR. &
-                    z_l(zl_index_3mld) > ml_data%bathyV_north) then
+                    z_l(zl_index_3mld+1) > ml_data%bathyV_south .OR. &
+                    z_l(zl_index_3mld+1) > ml_data%bathyV_north) then
                     ml_data%T_inc=0.0
                 else ! if above bathy, then get the vertical profiles
 
@@ -295,26 +299,27 @@ contains
                     ANN_input(16:30) = PRHO_zgrad_sigma/PRHO_zgrad_sigma_dist
                     
                     ANN_input(31) = (log10(mld_depth) - 1.0) / 2.5
-                    ANN_input(32) = (log10(tauamp+1E-3)+1.2)/0.46
-                    ANN_input(33) = (ml_data%latent+114)/71
-                    ANN_input(34) = (ml_data%sensible+14.4)/24
-                    ANN_input(35) = (ml_data%lw+55)/21
-                    ANN_input(36) = ml_data%sw/400
-                    ANN_input(37:51) = shear2_sigma/shear2_sigma_dist
+                    ANN_input(32) = sin(pi / 180.0 * ml_data%geoLatT)
+                    ANN_input(33) = (log10(tauamp+1E-3)+1.2)/0.46
+                    ANN_input(34) = (ml_data%latent+114)/71
+                    ANN_input(35) = (ml_data%sensible+14.4)/24
+                    ANN_input(36) = (ml_data%lw+55)/21
+                    ANN_input(37) = ml_data%sw/400
+                    ANN_input(38:52) = shear2_sigma/shear2_sigma_dist
 
-                    ANN_input(52) = (log10(thetao_zgrad_sigma_dist)+0.8)/0.5
-                    ANN_input(53) = (log10(PRHO_zgrad_sigma_dist)+1.35)/0.55
-                    ANN_input(54) = (log10(shear2_sigma_dist)+4.15)/0.86
+                    ANN_input(53) = (log10(thetao_zgrad_sigma_dist)+0.8)/0.5
+                    ANN_input(54) = (log10(PRHO_zgrad_sigma_dist)+1.35)/0.55
+                    ANN_input(55) = (log10(shear2_sigma_dist)+4.15)/0.86
 
-                    ANN_input_final(1:6) = ANN_input(31:36)
-                    ANN_input_final(7:9) = ANN_input(52:54)
+                    ANN_input_final(1:7) = ANN_input(31:37)
+                    ANN_input_final(8:10) = ANN_input(53:55)
                     
                     call cnn_encode(ANN_input(1:15), ml_config%e1_weight1, ml_config%e1_bias1, ml_config%e1_weight2, ml_config%e1_bias2, encoder_output)
-                    ANN_input_final(10:17) = encoder_output
+                    ANN_input_final(11:18) = encoder_output
                     call cnn_encode(ANN_input(16:30), ml_config%e2_weight1, ml_config%e2_bias1, ml_config%e2_weight2, ml_config%e2_bias2, encoder_output)
-                    ANN_input_final(18:25) = encoder_output
+                    ANN_input_final(19:26) = encoder_output
                     call cnn_encode(ANN_input(37:51), ml_config%e3_weight1, ml_config%e3_bias1, ml_config%e3_weight2, ml_config%e3_bias2, encoder_output)
-                    ANN_input_final(26:33) = encoder_output
+                    ANN_input_final(27:34) = encoder_output
 
                     attns = matmul(ml_config%attn_weight, ANN_input_final) + ml_config%attn_bias
                     do i = 1, 33
@@ -336,26 +341,16 @@ contains
                     l2_output = max(ReLU_zero, matmul(ml_config%l2_weight, l1_output) + ml_config%l2_bias)
                     l3_output = matmul(ml_config%l3_weight, l2_output) + ml_config%l3_bias
                     
-                    ! l3_output is the predicted flux
+                    ! l3_output is the latent output
+
+                    !decoder: from l3_output to flux_output
 
                     coef = thetao_zgrad_sigma_dist*0.1*mld_depth*(tauamp/rho0)**0.5
-                    l3_output = l3_output * coef
+                    flux_output = flux_output * coef
         
-                    output_DT_sigmas =  (l3_output(1:15)-l3_output(2:16))/(0.2*mld_depth)/1000
+                    output_DT_sigmas =  (flux_output(1:15)-flux_output(2:16))/(0.2*mld_depth)/1000
                     
-                    !allocate(output_flux_at_zi(zl_index_3mld+1))
-                    !output_flux_at_zi(1) = l3_output(1)
-                    !do zz = 1, zl_index_3mld
-                        !call find_right_index_clean(output_flux_sigmas, zi_to_sigma(zz), right_index)
-                        !if (right_index == 0) then
-                            !output_flux_at_zi(zz+1) = 0.0
-                        ! it is known that right_index > 1
-                        !else
-                            !call interpolate(output_flux_sigmas(right_index-1),output_flux_sigmas(right_index),l3_output(right_index-1),&
-                                    !l3_output(right_index),zi_to_sigma(zz),output_flux_at_zi(zz+1))
                     
-                        !end if       
-                    !end do
                 
                     allocate(output_DT_at_zl(zl_index_3mld))
                     do zz = 1, zl_index_3mld
@@ -468,6 +463,37 @@ contains
           output_vec(i) = sum(layer2_output(i,1:15)) / 15.0
         enddo
       end subroutine cnn_encode
+
+    subroutine transposed_conv1d(input, weight, bias, output)
+      real, dimension(16,8), intent(in) :: input             ! (in_channels, length)
+      real, dimension(16,8,3), intent(in) :: weight          ! (in_channels, out_channels, kernel)
+      real, dimension(8), intent(in) :: bias
+      real, dimension(8,16), intent(out) :: output           ! (out_channels, output_length)
+
+      integer :: in_ch, out_ch, k, t, out_pos
+
+      output = 0.0
+
+      do in_ch = 1, 16
+         do t = 1, 8
+            do out_ch = 1, 8
+               do k = 1, 3
+                  out_pos = (t - 1)*2 - 1 + k ! 2: stride; 1: padding; k: kernel
+                  if (out_pos >= 1 .and. out_pos <= 16) then
+                     output(out_ch, out_pos) = output(out_ch, out_pos) + &
+                          input(in_ch, t) * weight(in_ch, out_ch, k)
+                  end if
+               end do
+            end do
+         end do
+      end do
+
+      ! Add bias
+      do out_ch = 1, 8
+         output(out_ch, :) = output(out_ch, :) + bias(out_ch)
+      end do
+
+    end subroutine transposed_conv1d
 
 
     Subroutine read_ANN_file(ml_config)
