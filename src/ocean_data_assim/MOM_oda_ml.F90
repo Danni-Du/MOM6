@@ -672,6 +672,11 @@ contains
         retval = nf90_inq_varid(ncid, varname, varid)
         retval = nf90_get_var(ncid, varid, l3_weight_temp)
         ml_config%l3_weight = transpose(l3_weight_temp)
+
+        varname = 'd_weight1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, d_weight1_temp)
+        ml_config%d_weight1 = transpose(d_weight1_temp)
         
 
         varname = 'l1_bias'
