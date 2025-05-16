@@ -631,23 +631,23 @@ contains
 
         call cnn_encode_ann2(ANN_input(1:50), ml_config%e1_weight1_ann2, ml_config%e1_bias1_ann2, ml_config%e1_weight2_ann2, ml_config%e1_bias2_ann2, encoder_output)
         ANN_input_final(18:25) = encoder_output
-        call cnn_encode_ann2(ANN_input(51:100), ml_config%e1_weight1_ann2, ml_config%e1_bias1_ann2, ml_config%e1_weight2_ann2, ml_config%e1_bias2_ann2, encoder_output)
+        call cnn_encode_ann2(ANN_input(51:100), ml_config%e2_weight1_ann2, ml_config%e2_bias1_ann2, ml_config%e2_weight2_ann2, ml_config%e2_bias2_ann2, encoder_output)
         ANN_input_final(26:33) = encoder_output
-        call cnn_encode_ann2(ANN_input(101:150), ml_config%e1_weight1_ann2, ml_config%e1_bias1_ann2, ml_config%e1_weight2_ann2, ml_config%e1_bias2_ann2, encoder_output)
+        call cnn_encode_ann2(ANN_input(101:150), ml_config%e3_weight1_ann2, ml_config%e3_bias1_ann2, ml_config%e3_weight2_ann2, ml_config%e3_bias2_ann2, encoder_output)
         ANN_input_final(34:41) = encoder_output
-        call cnn_encode_ann2(ANN_input(151:200), ml_config%e1_weight1_ann2, ml_config%e1_bias1_ann2, ml_config%e1_weight2_ann2, ml_config%e1_bias2_ann2, encoder_output)
+        call cnn_encode_ann2(ANN_input(151:200), ml_config%e4_weight1_ann2, ml_config%e4_bias1_ann2, ml_config%e4_weight2_ann2, ml_config%e4_bias2_ann2, encoder_output)
         ANN_input_final(42:49) = encoder_output
-        call cnn_encode_ann2(ANN_input(201:250), ml_config%e1_weight1_ann2, ml_config%e1_bias1_ann2, ml_config%e1_weight2_ann2, ml_config%e1_bias2_ann2, encoder_output)
+        call cnn_encode_ann2(ANN_input(201:250), ml_config%e5_weight1_ann2, ml_config%e5_bias1_ann2, ml_config%e5_weight2_ann2, ml_config%e5_bias2_ann2, encoder_output)
         ANN_input_final(50:57) = encoder_output
-        call cnn_encode_ann2(ANN_input(258:307), ml_config%e1_weight1_ann2, ml_config%e1_bias1_ann2, ml_config%e1_weight2_ann2, ml_config%e1_bias2_ann2, encoder_output)
+        call cnn_encode_ann2(ANN_input(258:307), ml_config%e6_weight1_ann2, ml_config%e6_bias1_ann2, ml_config%e6_weight2_ann2, ml_config%e6_bias2_ann2, encoder_output)
         ANN_input_final(58:65) = encoder_output
-        call cnn_encode_ann2(ANN_input(308:357), ml_config%e1_weight1_ann2, ml_config%e1_bias1_ann2, ml_config%e1_weight2_ann2, ml_config%e1_bias2_ann2, encoder_output)
+        call cnn_encode_ann2(ANN_input(308:357), ml_config%e7_weight1_ann2, ml_config%e7_bias1_ann2, ml_config%e7_weight2_ann2, ml_config%e7_bias2_ann2, encoder_output)
         ANN_input_final(66:73) = encoder_output
-        call cnn_encode_ann2(ANN_input(358:407), ml_config%e1_weight1_ann2, ml_config%e1_bias1_ann2, ml_config%e1_weight2_ann2, ml_config%e1_bias2_ann2, encoder_output)
+        call cnn_encode_ann2(ANN_input(358:407), ml_config%e8_weight1_ann2, ml_config%e8_bias1_ann2, ml_config%e8_weight2_ann2, ml_config%e8_bias2_ann2, encoder_output)
         ANN_input_final(74:81) = encoder_output
-        call cnn_encode_ann2(ANN_input(408:457), ml_config%e1_weight1_ann2, ml_config%e1_bias1_ann2, ml_config%e1_weight2_ann2, ml_config%e1_bias2_ann2, encoder_output)
+        call cnn_encode_ann2(ANN_input(408:457), ml_config%e9_weight1_ann2, ml_config%e9_bias1_ann2, ml_config%e9_weight2_ann2, ml_config%e9_bias2_ann2, encoder_output)
         ANN_input_final(82:89) = encoder_output
-        call cnn_encode_ann2(ANN_input(458:507), ml_config%e1_weight1_ann2, ml_config%e1_bias1_ann2, ml_config%e1_weight2_ann2, ml_config%e1_bias2_ann2, encoder_output)
+        call cnn_encode_ann2(ANN_input(458:507), ml_config%e10_weight1_ann2, ml_config%e10_bias1_ann2, ml_config%e10_weight2_ann2, ml_config%e10_bias2_ann2, encoder_output)
         ANN_input_final(90:97) = encoder_output
 
         attns1 = max(ReLU_zero, matmul(ml_config%attn_weight1_ann2, ANN_input_final) + ml_config%attn_bias1_ann2)
@@ -804,6 +804,54 @@ contains
         enddo
       end subroutine cnn_encode
 
+    subroutine cnn_encode_ann2(input_vec, weights1, bias1, weights2, bias2, output_vec)
+        implicit none
+
+        real, dimension(50), intent(in)  :: input_vec
+        real, dimension(16), intent(in)  :: bias1
+        real, dimension(8), intent(in)  :: bias2
+        real, dimension(16, 1, 3), intent(in)  :: weights1
+        real, dimension(8, 16, 3), intent(in)  :: weights2
+        real, dimension(8), intent(out) :: output_vec
+
+        real, dimension(16, 50) :: layer1_output
+        real, dimension(8, 50) :: layer2_output
+        integer :: i, j, k, l
+
+        ! First conv layer: 1 → 16 channels
+        do i = 1, 16
+          do j = 1, 50
+            layer1_output(i,j) = bias1(i)
+            do k = -1,1
+              if (j+k >= 1 .and. j+k <= 50) then
+                layer1_output(i,j) = layer1_output(i,j) + weights1(i,1,k+2)*input_vec(j+k)
+              endif
+            enddo
+            if (layer1_output(i,j) < 0.0) layer1_output(i,j) = 0.0  ! ReLU
+          enddo
+        enddo
+
+        ! Second conv layer: 16 → 8 channels
+        do i = 1, 8
+          do j = 1, 50
+            layer2_output(i,j) = bias2(i)
+            do k = 1, 16
+              do l = -1,1
+                if (j+l >= 1 .and. j+l <= 50) then
+                  layer2_output(i,j) = layer2_output(i,j) + weights2(i,k,l+2)*layer1_output(k,j+l)
+                endif
+              enddo
+            enddo
+            if (layer2_output(i,j) < 0.0) layer2_output(i,j) = 0.0  ! ReLU
+          enddo
+        enddo
+
+        ! Adaptive avg pooling: avg over 15 timesteps → (8)
+        do i = 1, 8
+          output_vec(i) = sum(layer2_output(i,1:50)) / 50.0
+        enddo
+      end subroutine cnn_encode
+
     subroutine transposed_conv1d(input, weight, bias, output)
       real, dimension(16,8), intent(in) :: input             ! (in_channels, length)
       real, dimension(16,8,3), intent(in) :: weight          ! (in_channels, out_channels, kernel)
@@ -834,6 +882,69 @@ contains
       end do
 
     end subroutine transposed_conv1d
+
+    subroutine transposed_conv1d_ann2_1(input, weight, bias, output)
+      real, dimension(16,13), intent(in) :: input             ! (in_channels, length)
+      real, dimension(16,8,3), intent(in) :: weight          ! (in_channels, out_channels, kernel)
+      real, dimension(8), intent(in) :: bias
+      real, dimension(8,25), intent(out) :: output           ! (out_channels, output_length)
+
+      integer :: in_ch, out_ch, k, t, out_pos
+
+      output = 0.0
+
+      do in_ch = 1, 16
+         do t = 1, 13
+            do out_ch = 1, 8
+               do k = 1, 3
+                  out_pos = (t - 1)*2 - 1 + k -1 ! 2: stride; 1: padding; k: kernel (k-1), +out_padding = 0
+                  if (out_pos >= 1 .and. out_pos <= 25) then
+                     output(out_ch, out_pos) = output(out_ch, out_pos) + &
+                          input(in_ch, t) * weight(in_ch, out_ch, k)
+                  end if
+               end do
+            end do
+         end do
+      end do
+
+      ! Add bias
+      do out_ch = 1, 8
+         output(out_ch, :) = output(out_ch, :) + bias(out_ch)
+      end do
+
+    end subroutine transposed_conv1d_ann2_1
+
+
+    subroutine transposed_conv1d_ann2_2(input, weight, bias, output)
+      real, dimension(8,25), intent(in) :: input             ! (in_channels, length)
+      real, dimension(8,4,3), intent(in) :: weight          ! (in_channels, out_channels, kernel)
+      real, dimension(4), intent(in) :: bias
+      real, dimension(4,50), intent(out) :: output           ! (out_channels, output_length)
+
+      integer :: in_ch, out_ch, k, t, out_pos
+
+      output = 0.0
+
+      do in_ch = 1, 8
+         do t = 1, 25
+            do out_ch = 1, 4
+               do k = 1, 3
+                  out_pos = (t - 1)*2 - 1 + k ! 2: stride; 1: padding; k: kernel
+                  if (out_pos >= 1 .and. out_pos <= 50) then
+                     output(out_ch, out_pos) = output(out_ch, out_pos) + &
+                          input(in_ch, t) * weight(in_ch, out_ch, k)
+                  end if
+               end do
+            end do
+         end do
+      end do
+
+      ! Add bias
+      do out_ch = 1, 4
+         output(out_ch, :) = output(out_ch, :) + bias(out_ch)
+      end do
+
+    end subroutine transposed_conv1d_ann2_2
 
 
     Subroutine read_ANN_file(ml_config)
