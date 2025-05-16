@@ -489,254 +489,262 @@ contains
         real, dimension(8,25) :: decoder_output1
         real, dimension(4,50) :: decoder_output2
         integer :: zz, i, j, idx, k, l
-        real :: sum_exp, pi, ReLU_zero
+        real :: sum_exp, pi, ReLU_zero, Smin_left, Smin_right, Smin_south, Smin_north, Smin, Smin5
         real, dimension(:), allocatable :: z_l
 
-        ReLU_zero = 0.0
-        pi = acos(-1.0)
-        allocate(z_l(ml_config%nk),source=0.0)
-        z_l = ml_config%z_l
+        Smin_left = MINVAL(ml_data%S_left)
+        Smin_right = MINVAL(ml_data%S_right)
+        Smin_north = MINVAL(ml_data%S_north)
+        Smin_north = MINVAL(ml_data%S_south)
+        Smin = MINVAL(ml_data%S)
+        Smin_5 = MINVAL((/Smin_left,Smin_right,Smin_north,Smin_south, Smin/))
+        if (Smin_5 >= 0 ) then
 
         
-        !prepare for inputs
-        do zz = 1, 50
-            thetao_top = ml_data%T(zz)
-            so_top = ml_data%S(zz)
-            CT = gsw_ct_from_pt(so_top,thetao_top)
-            PRHO_top = gsw_sigma0(so_top,CT)
-            uo_right_top = ml_data%U_right(zz)
-            uo_left_top = ml_data%U_left(zz)
-            vo_north_top = ml_data%V_north(zz)
-            vo_south_top = ml_data%V_south(zz)
+            ReLU_zero = 0.0
+            pi = acos(-1.0)
+            allocate(z_l(ml_config%nk),source=0.0)
+            z_l = ml_config%z_l
+
+        
+            !prepare for inputs
+            do zz = 1, 50
+                thetao_top = ml_data%T(zz)
+                so_top = ml_data%S(zz)
+                CT = gsw_ct_from_pt(so_top,thetao_top)
+                PRHO_top = gsw_sigma0(so_top,CT)
+                uo_right_top = ml_data%U_right(zz)
+                uo_left_top = ml_data%U_left(zz)
+                vo_north_top = ml_data%V_north(zz)
+                vo_south_top = ml_data%V_south(zz)
                     
-            thetao_bottom = ml_data%T(zz+1)
-            so_bottom = ml_data%S(zz+1)
-            CT = gsw_ct_from_pt(so_bottom,thetao_bottom)
-            PRHO_bottom = gsw_sigma0(so_bottom,CT)
-            uo_right_bottom = ml_data%U_right(zz+1)
-            uo_left_bottom = ml_data%U_left(zz+1)
-            vo_north_bottom = ml_data%V_north(zz+1)
-            vo_south_bottom = ml_data%V_south(zz+1)
+                thetao_bottom = ml_data%T(zz+1)
+                so_bottom = ml_data%S(zz+1)
+                CT = gsw_ct_from_pt(so_bottom,thetao_bottom)
+                PRHO_bottom = gsw_sigma0(so_bottom,CT)
+                uo_right_bottom = ml_data%U_right(zz+1)
+                uo_left_bottom = ml_data%U_left(zz+1)
+                vo_north_bottom = ml_data%V_north(zz+1)
+                vo_south_bottom = ml_data%V_south(zz+1)
 
-            thetao_zgrad(zz) = (thetao_top - thetao_bottom)/(z_l(zz+1) - z_l(zz))
-            PRHO_zgrad(zz) = (PRHO_top - PRHO_bottom)/(z_l(zz+1) - z_l(zz))
-            uo_zgrad = (uo_right_top-uo_right_bottom+uo_left_top-uo_left_bottom)/(2*(z_l(zz+1) - z_l(zz)))
-            vo_zgrad = (vo_north_top-vo_north_bottom+vo_south_top-vo_south_bottom)/(2*(z_l(zz+1) - z_l(zz)))
-            shear(zz) = uo_zgrad **2 + vo_zgrad**2
-        end do
+                thetao_zgrad(zz) = (thetao_top - thetao_bottom)/(z_l(zz+1) - z_l(zz))
+                PRHO_zgrad(zz) = (PRHO_top - PRHO_bottom)/(z_l(zz+1) - z_l(zz))
+                uo_zgrad = (uo_right_top-uo_right_bottom+uo_left_top-uo_left_bottom)/(2*(z_l(zz+1) - z_l(zz)))
+                vo_zgrad = (vo_north_top-vo_north_bottom+vo_south_top-vo_south_bottom)/(2*(z_l(zz+1) - z_l(zz)))
+                shear(zz) = uo_zgrad **2 + vo_zgrad**2
+            end do
 
-        do zz = 1, 50
-            call compute_current_divergence(ml_data%U_left(zz)*ml_data%dyCu_left, ml_data%U_right(zz)*ml_data%dyCu_right, &
+            do zz = 1, 50
+                call compute_current_divergence(ml_data%U_left(zz)*ml_data%dyCu_left, ml_data%U_right(zz)*ml_data%dyCu_right, &
                                         ml_data%V_south(zz)*ml_data%dxCv_south, ml_data%V_north(zz)*ml_data%dxCv_north, &
                                         ml_data%areacello, div(zz))
 
-            call compute_current_vorticity(ml_data%U_left(zz)*ml_data%dxCu_left, ml_data%U_left_north(zz)*ml_data%dxCu_left_north, &
+                call compute_current_vorticity(ml_data%U_left(zz)*ml_data%dxCu_left, ml_data%U_left_north(zz)*ml_data%dxCu_left_north, &
                                         ml_data%V_north_left(zz)*ml_data%dyCv_north_left, ml_data%V_north(zz)*ml_data%dyCv_north, &
                                         ml_data%areacellobu_left_north, vor_ln)
-            call compute_current_vorticity(ml_data%U_right(zz)*ml_data%dxCu_right, ml_data%U_right_north(zz)*ml_data%dxCu_right_north, &
+                call compute_current_vorticity(ml_data%U_right(zz)*ml_data%dxCu_right, ml_data%U_right_north(zz)*ml_data%dxCu_right_north, &
                                         ml_data%V_north(zz)*ml_data%dyCv_north, ml_data%V_north_right(zz)*ml_data%dyCv_north_right, &
                                         ml_data%areacellobu_right_north, vor_rn)
-            call compute_current_vorticity(ml_data%U_left_south(zz)*ml_data%dxCu_left_south, ml_data%U_left(zz)*ml_data%dxCu_left, &
+                call compute_current_vorticity(ml_data%U_left_south(zz)*ml_data%dxCu_left_south, ml_data%U_left(zz)*ml_data%dxCu_left, &
                                         ml_data%V_south_left(zz)*ml_data%dyCv_south_left, ml_data%V_south(zz)*ml_data%dyCv_south, &
                                         ml_data%areacellobu_left_south, vor_ls)
-            call compute_current_vorticity(ml_data%U_right_south(zz)*ml_data%dxCu_right_south, ml_data%U_right(zz)*ml_data%dxCu_right, &
+                call compute_current_vorticity(ml_data%U_right_south(zz)*ml_data%dxCu_right_south, ml_data%U_right(zz)*ml_data%dxCu_right, &
                                         ml_data%V_south(zz)*ml_data%dyCv_south, ml_data%V_south_right(zz)*ml_data%dyCv_south_right, &
                                         ml_data%areacellobu_right_south, vor_rs)
-            vor(zz) = (vor_ln+vor_rn+vor_ls+vor_rs)/4
-            call compute_current_strain1(ml_data%U_left(zz)*ml_data%dxCu_left, ml_data%U_left_north(zz)*ml_data%dxCu_left_north, &
+                vor(zz) = (vor_ln+vor_rn+vor_ls+vor_rs)/4
+                call compute_current_strain1(ml_data%U_left(zz)*ml_data%dxCu_left, ml_data%U_left_north(zz)*ml_data%dxCu_left_north, &
                                         ml_data%V_north_left(zz)*ml_data%dyCv_north_left, ml_data%V_north(zz)*ml_data%dyCv_north, &
                                         ml_data%areacellobu_left_north, strain1_ln)
-            call compute_current_strain1(ml_data%U_right(zz)*ml_data%dxCu_right, ml_data%U_right_north(zz)*ml_data%dxCu_right_north, &
+                call compute_current_strain1(ml_data%U_right(zz)*ml_data%dxCu_right, ml_data%U_right_north(zz)*ml_data%dxCu_right_north, &
                                         ml_data%V_north(zz)*ml_data%dyCv_north, ml_data%V_north_right(zz)*ml_data%dyCv_north_right, &
                                         ml_data%areacellobu_right_north, strain1_rn)
-            call compute_current_strain1(ml_data%U_left_south(zz)*ml_data%dxCu_left_south, ml_data%U_left(zz)*ml_data%dxCu_left, &
+                call compute_current_strain1(ml_data%U_left_south(zz)*ml_data%dxCu_left_south, ml_data%U_left(zz)*ml_data%dxCu_left, &
                                         ml_data%V_south_left(zz)*ml_data%dyCv_south_left, ml_data%V_south(zz)*ml_data%dyCv_south, &
                                         ml_data%areacellobu_left_south, strain1_ls)
-            call compute_current_strain1(ml_data%U_right_south(zz)*ml_data%dxCu_right_south, ml_data%U_right(zz)*ml_data%dxCu_right, &
+                call compute_current_strain1(ml_data%U_right_south(zz)*ml_data%dxCu_right_south, ml_data%U_right(zz)*ml_data%dxCu_right, &
                                         ml_data%V_south(zz)*ml_data%dyCv_south, ml_data%V_south_right(zz)*ml_data%dyCv_south_right, &
                                         ml_data%areacellobu_right_south, strain1_rs)
-            call compute_current_strain2(ml_data%U_left(zz)*ml_data%dyCu_left, ml_data%U_right(zz)*ml_data%dyCu_right, &
+                call compute_current_strain2(ml_data%U_left(zz)*ml_data%dyCu_left, ml_data%U_right(zz)*ml_data%dyCu_right, &
                                         ml_data%V_south(zz)*ml_data%dxCv_south, ml_data%V_north(zz)*ml_data%dxCv_north, &
                                         ml_data%areacello, strain2)
-            strain1 = (strain1_ln+strain1_rn+strain1_ls+strain1_rs)/4
-            strain(zz) = (strain1**2+strain2**2)**0.5
+                strain1 = (strain1_ln+strain1_rn+strain1_ls+strain1_rs)/4
+                strain(zz) = (strain1**2+strain2**2)**0.5
 
-            thetao_left = ml_data%T_left(zz)
-            so_left = ml_data%S_left(zz)
-            CT = gsw_ct_from_pt(so_left,thetao_left)
-            PRHO_left = gsw_sigma0(so_left,CT)
+                thetao_left = ml_data%T_left(zz)
+                so_left = ml_data%S_left(zz)
+                CT = gsw_ct_from_pt(so_left,thetao_left)
+                PRHO_left = gsw_sigma0(so_left,CT)
 
-            thetao_right = ml_data%T_right(zz)
-            so_right = ml_data%S_right(zz)
-            CT = gsw_ct_from_pt(so_right,thetao_right)
-            PRHO_right = gsw_sigma0(so_right,CT)
+                thetao_right = ml_data%T_right(zz)
+                so_right = ml_data%S_right(zz)
+                CT = gsw_ct_from_pt(so_right,thetao_right)
+                PRHO_right = gsw_sigma0(so_right,CT)
 
-            thetao = ml_data%T(zz)
-            so = ml_data%S(zz)
-            CT = gsw_ct_from_pt(so,thetao)
-            PRHO = gsw_sigma0(so,CT)
+                thetao = ml_data%T(zz)
+                so = ml_data%S(zz)
+                CT = gsw_ct_from_pt(so,thetao)
+                PRHO = gsw_sigma0(so,CT)
 
-            thetao_xgrad(zz) = ((thetao_right-thetao)/ml_data%dxCu_right + (thetao-thetao_left)/ml_data%dxCu_left)/2
-            PRHO_xgrad(zz) = ((PRHO_right-PRHO)/ml_data%dxCu_right + (PRHO-PRHO_left)/ml_data%dxCu_left)/2
+                thetao_xgrad(zz) = ((thetao_right-thetao)/ml_data%dxCu_right + (thetao-thetao_left)/ml_data%dxCu_left)/2
+                PRHO_xgrad(zz) = ((PRHO_right-PRHO)/ml_data%dxCu_right + (PRHO-PRHO_left)/ml_data%dxCu_left)/2
 
-            thetao_north = ml_data%T_north(zz)
-            so_north = ml_data%S_north(zz)
-            CT = gsw_ct_from_pt(so_north,thetao_north)
-            PRHO_north = gsw_sigma0(so_north,CT)
+                thetao_north = ml_data%T_north(zz)
+                so_north = ml_data%S_north(zz)
+                CT = gsw_ct_from_pt(so_north,thetao_north)
+                PRHO_north = gsw_sigma0(so_north,CT)
 
-            thetao_south = ml_data%T_south(zz)
-            so_south = ml_data%S_south(zz)
-            CT = gsw_ct_from_pt(so_south,thetao_south)
-            PRHO_south = gsw_sigma0(so_south,CT)
+                thetao_south = ml_data%T_south(zz)
+                so_south = ml_data%S_south(zz)
+                CT = gsw_ct_from_pt(so_south,thetao_south)
+                PRHO_south = gsw_sigma0(so_south,CT)
 
 
-            thetao_ygrad(zz) = ((thetao_north-thetao)/ml_data%dyCv_north + (thetao-thetao_south)/ml_data%dyCv_south)/2
-            PRHO_ygrad(zz) = ((PRHO_north-PRHO)/ml_data%dyCv_north + (PRHO-PRHO_south)/ml_data%dyCv_south)/2
+                thetao_ygrad(zz) = ((thetao_north-thetao)/ml_data%dyCv_north + (thetao-thetao_south)/ml_data%dyCv_south)/2
+                PRHO_ygrad(zz) = ((PRHO_north-PRHO)/ml_data%dyCv_north + (PRHO-PRHO_south)/ml_data%dyCv_south)/2
 
-        end do
+            end do
 
-        tauamp = sqrt(((ml_data%taux_left+ml_data%taux_right)/2)**2+((ml_data%tauy_south+ml_data%tauy_north)/2)**2)
-        call compute_current_vorticity(ml_data%taux_left*ml_data%dxCu_left, ml_data%taux_left_north*ml_data%dxCu_left_north, &
+            tauamp = sqrt(((ml_data%taux_left+ml_data%taux_right)/2)**2+((ml_data%tauy_south+ml_data%tauy_north)/2)**2)
+            call compute_current_vorticity(ml_data%taux_left*ml_data%dxCu_left, ml_data%taux_left_north*ml_data%dxCu_left_north, &
                                         ml_data%tauy_north_left*ml_data%dyCv_north_left, ml_data%tauy_north*ml_data%dyCv_north, &
                                         ml_data%areacellobu_left_north, taucurl_ln)
-        call compute_current_vorticity(ml_data%taux_right*ml_data%dxCu_right, ml_data%taux_right_north*ml_data%dxCu_right_north, &
+            call compute_current_vorticity(ml_data%taux_right*ml_data%dxCu_right, ml_data%taux_right_north*ml_data%dxCu_right_north, &
                                         ml_data%tauy_north*ml_data%dyCv_north, ml_data%tauy_north_right*ml_data%dyCv_north_right, &
                                         ml_data%areacellobu_right_north, taucurl_rn)
-        call compute_current_vorticity(ml_data%taux_left_south*ml_data%dxCu_left_south, ml_data%taux_left*ml_data%dxCu_left, &
+            call compute_current_vorticity(ml_data%taux_left_south*ml_data%dxCu_left_south, ml_data%taux_left*ml_data%dxCu_left, &
                                         ml_data%tauy_south_left*ml_data%dyCv_south_left, ml_data%tauy_south*ml_data%dyCv_south, &
                                         ml_data%areacellobu_left_south, taucurl_ls)
-        call compute_current_vorticity(ml_data%taux_right_south*ml_data%dxCu_right_south, ml_data%taux_right*ml_data%dxCu_right, &
+            call compute_current_vorticity(ml_data%taux_right_south*ml_data%dxCu_right_south, ml_data%taux_right*ml_data%dxCu_right, &
                                         ml_data%tauy_south*ml_data%dyCv_south, ml_data%tauy_south_right*ml_data%dyCv_south_right, &
                                         ml_data%areacellobu_right_south, taucurl_rs)
-        taucurl = (taucurl_ln+taucurl_rn+taucurl_ls+taucurl_rs)/4
+            taucurl = (taucurl_ln+taucurl_rn+taucurl_ls+taucurl_rs)/4
 
-        thetao_zgrad_dist = sqrt(sum(thetao_zgrad**2))
-        PRHO_zgrad_dist = sqrt(sum(PRHO_zgrad**2))
-        shear_dist = sqrt(sum(shear**2))
-        vor_dist = sqrt(sum(vor**2))
-        div_dist = sqrt(sum(div**2))
-        thetao_xgrad_dist = sqrt(sum(thetao_xgrad**2))
-        thetao_ygrad_dist = sqrt(sum(thetao_ygrad**2))
-        PRHO_xgrad_dist = sqrt(sum(PRHO_xgrad**2))
-        PRHO_ygrad_dist = sqrt(sum(PRHO_ygrad**2))
-        strain_dist = sqrt(sum(strain**2))
+            thetao_zgrad_dist = sqrt(sum(thetao_zgrad**2))
+            PRHO_zgrad_dist = sqrt(sum(PRHO_zgrad**2))
+            shear_dist = sqrt(sum(shear**2))
+            vor_dist = sqrt(sum(vor**2))
+            div_dist = sqrt(sum(div**2))
+            thetao_xgrad_dist = sqrt(sum(thetao_xgrad**2))
+            thetao_ygrad_dist = sqrt(sum(thetao_ygrad**2))
+            PRHO_xgrad_dist = sqrt(sum(PRHO_xgrad**2))
+            PRHO_ygrad_dist = sqrt(sum(PRHO_ygrad**2))
+            strain_dist = sqrt(sum(strain**2))
         
                     
-        ANN_input(1:50) = thetao_zgrad/thetao_zgrad_dist
-        ANN_input(51:100) = PRHO_zgrad/PRHO_zgrad_dist
-        ANN_input(101:150) = shear/shear_dist
-        ANN_input(151:200) = vor/vor_dist
-        ANN_input(201:250) = div/div_dist
+            ANN_input(1:50) = thetao_zgrad/thetao_zgrad_dist
+            ANN_input(51:100) = PRHO_zgrad/PRHO_zgrad_dist
+            ANN_input(101:150) = shear/shear_dist
+            ANN_input(151:200) = vor/vor_dist
+            ANN_input(201:250) = div/div_dist
                     
-        ANN_input(251) = sin(pi / 180.0 * ml_data%geoLatT)
-        ANN_input(252) = (log10(tauamp+1E-3)+1.2)/0.46
-        ANN_input(253) = taucurl*1E5
-        ANN_input(254) = (ml_data%latent+114)/71
-        ANN_input(255) = (ml_data%sensible+14.4)/24
-        ANN_input(256) = (ml_data%lw+55)/21
-        ANN_input(257) = ml_data%sw/400
+            ANN_input(251) = sin(pi / 180.0 * ml_data%geoLatT)
+            ANN_input(252) = (log10(tauamp+1E-3)+1.2)/0.46
+            ANN_input(253) = taucurl*1E5
+            ANN_input(254) = (ml_data%latent+114)/71
+            ANN_input(255) = (ml_data%sensible+14.4)/24
+            ANN_input(256) = (ml_data%lw+55)/21
+            ANN_input(257) = ml_data%sw/400
 
-        ANN_input(258:307) = thetao_xgrad/thetao_xgrad_dist
-        ANN_input(308:357) = thetao_ygrad/thetao_ygrad_dist
-        ANN_input(358:407) = PRHO_xgrad/PRHO_xgrad_dist
-        ANN_input(408:457) = PRHO_ygrad/PRHO_ygrad_dist
-        ANN_input(458:507) = strain/strain_dist
+            ANN_input(258:307) = thetao_xgrad/thetao_xgrad_dist
+            ANN_input(308:357) = thetao_ygrad/thetao_ygrad_dist
+            ANN_input(358:407) = PRHO_xgrad/PRHO_xgrad_dist
+            ANN_input(408:457) = PRHO_ygrad/PRHO_ygrad_dist
+            ANN_input(458:507) = strain/strain_dist
         
-        ANN_input(508) = (log10(thetao_zgrad_dist+1E-2)+0.53)/0.4
-        ANN_input(509) = (log10(PRHO_zgrad_dist+1E-3)+1.15)/0.51
-        ANN_input(510) = (log10(shear_dist+1E-6)+3.47)/0.56
-        ANN_input(511) = (log10(vor_dist)+5.5)/0.44
-        ANN_input(512) = (log10(div_dist)+5.75)/0.41
-        ANN_input(513) = (log10(thetao_xgrad_dist+1E-7)+4.74)/0.3
-        ANN_input(514) = (log10(thetao_ygrad_dist+1E-6)+4.43)/0.26
-        ANN_input(515) = (log10(PRHO_xgrad_dist+1E-7)+5.37)/0.3
-        ANN_input(516) = (log10(PRHO_ygrad_dist)+5.1)/0.34
-        ANN_input(517) = (log10(strain_dist)+5.35)/0.39
+            ANN_input(508) = (log10(thetao_zgrad_dist+1E-2)+0.53)/0.4
+            ANN_input(509) = (log10(PRHO_zgrad_dist+1E-3)+1.15)/0.51
+            ANN_input(510) = (log10(shear_dist+1E-6)+3.47)/0.56
+            ANN_input(511) = (log10(vor_dist)+5.5)/0.44
+            ANN_input(512) = (log10(div_dist)+5.75)/0.41
+            ANN_input(513) = (log10(thetao_xgrad_dist+1E-7)+4.74)/0.3
+            ANN_input(514) = (log10(thetao_ygrad_dist+1E-6)+4.43)/0.26
+            ANN_input(515) = (log10(PRHO_xgrad_dist+1E-7)+5.37)/0.3
+            ANN_input(516) = (log10(PRHO_ygrad_dist)+5.1)/0.34
+            ANN_input(517) = (log10(strain_dist)+5.35)/0.39
         
 
-        ANN_input_final(1:7) = ANN_input(251:257)
-        ANN_input_final(8:17) = ANN_input(508:517)
+            ANN_input_final(1:7) = ANN_input(251:257)
+            ANN_input_final(8:17) = ANN_input(508:517)
 
-        call cnn_encode_ann2(ANN_input(1:50), ml_config%e1_weight1_ann2, ml_config%e1_bias1_ann2, ml_config%e1_weight2_ann2, ml_config%e1_bias2_ann2, encoder_output)
-        ANN_input_final(18:25) = encoder_output
-        call cnn_encode_ann2(ANN_input(51:100), ml_config%e2_weight1_ann2, ml_config%e2_bias1_ann2, ml_config%e2_weight2_ann2, ml_config%e2_bias2_ann2, encoder_output)
-        ANN_input_final(26:33) = encoder_output
-        call cnn_encode_ann2(ANN_input(101:150), ml_config%e3_weight1_ann2, ml_config%e3_bias1_ann2, ml_config%e3_weight2_ann2, ml_config%e3_bias2_ann2, encoder_output)
-        ANN_input_final(34:41) = encoder_output
-        call cnn_encode_ann2(ANN_input(151:200), ml_config%e4_weight1_ann2, ml_config%e4_bias1_ann2, ml_config%e4_weight2_ann2, ml_config%e4_bias2_ann2, encoder_output)
-        ANN_input_final(42:49) = encoder_output
-        call cnn_encode_ann2(ANN_input(201:250), ml_config%e5_weight1_ann2, ml_config%e5_bias1_ann2, ml_config%e5_weight2_ann2, ml_config%e5_bias2_ann2, encoder_output)
-        ANN_input_final(50:57) = encoder_output
-        call cnn_encode_ann2(ANN_input(258:307), ml_config%e6_weight1_ann2, ml_config%e6_bias1_ann2, ml_config%e6_weight2_ann2, ml_config%e6_bias2_ann2, encoder_output)
-        ANN_input_final(58:65) = encoder_output
-        call cnn_encode_ann2(ANN_input(308:357), ml_config%e7_weight1_ann2, ml_config%e7_bias1_ann2, ml_config%e7_weight2_ann2, ml_config%e7_bias2_ann2, encoder_output)
-        ANN_input_final(66:73) = encoder_output
-        call cnn_encode_ann2(ANN_input(358:407), ml_config%e8_weight1_ann2, ml_config%e8_bias1_ann2, ml_config%e8_weight2_ann2, ml_config%e8_bias2_ann2, encoder_output)
-        ANN_input_final(74:81) = encoder_output
-        call cnn_encode_ann2(ANN_input(408:457), ml_config%e9_weight1_ann2, ml_config%e9_bias1_ann2, ml_config%e9_weight2_ann2, ml_config%e9_bias2_ann2, encoder_output)
-        ANN_input_final(82:89) = encoder_output
-        call cnn_encode_ann2(ANN_input(458:507), ml_config%e10_weight1_ann2, ml_config%e10_bias1_ann2, ml_config%e10_weight2_ann2, ml_config%e10_bias2_ann2, encoder_output)
-        ANN_input_final(90:97) = encoder_output
+            call cnn_encode_ann2(ANN_input(1:50), ml_config%e1_weight1_ann2, ml_config%e1_bias1_ann2, ml_config%e1_weight2_ann2, ml_config%e1_bias2_ann2, encoder_output)
+            ANN_input_final(18:25) = encoder_output
+            call cnn_encode_ann2(ANN_input(51:100), ml_config%e2_weight1_ann2, ml_config%e2_bias1_ann2, ml_config%e2_weight2_ann2, ml_config%e2_bias2_ann2, encoder_output)
+            ANN_input_final(26:33) = encoder_output
+            call cnn_encode_ann2(ANN_input(101:150), ml_config%e3_weight1_ann2, ml_config%e3_bias1_ann2, ml_config%e3_weight2_ann2, ml_config%e3_bias2_ann2, encoder_output)
+            ANN_input_final(34:41) = encoder_output
+            call cnn_encode_ann2(ANN_input(151:200), ml_config%e4_weight1_ann2, ml_config%e4_bias1_ann2, ml_config%e4_weight2_ann2, ml_config%e4_bias2_ann2, encoder_output)
+            ANN_input_final(42:49) = encoder_output
+            call cnn_encode_ann2(ANN_input(201:250), ml_config%e5_weight1_ann2, ml_config%e5_bias1_ann2, ml_config%e5_weight2_ann2, ml_config%e5_bias2_ann2, encoder_output)
+            ANN_input_final(50:57) = encoder_output
+            call cnn_encode_ann2(ANN_input(258:307), ml_config%e6_weight1_ann2, ml_config%e6_bias1_ann2, ml_config%e6_weight2_ann2, ml_config%e6_bias2_ann2, encoder_output)
+            ANN_input_final(58:65) = encoder_output
+            call cnn_encode_ann2(ANN_input(308:357), ml_config%e7_weight1_ann2, ml_config%e7_bias1_ann2, ml_config%e7_weight2_ann2, ml_config%e7_bias2_ann2, encoder_output)
+            ANN_input_final(66:73) = encoder_output
+            call cnn_encode_ann2(ANN_input(358:407), ml_config%e8_weight1_ann2, ml_config%e8_bias1_ann2, ml_config%e8_weight2_ann2, ml_config%e8_bias2_ann2, encoder_output)
+            ANN_input_final(74:81) = encoder_output
+            call cnn_encode_ann2(ANN_input(408:457), ml_config%e9_weight1_ann2, ml_config%e9_bias1_ann2, ml_config%e9_weight2_ann2, ml_config%e9_bias2_ann2, encoder_output)
+            ANN_input_final(82:89) = encoder_output
+            call cnn_encode_ann2(ANN_input(458:507), ml_config%e10_weight1_ann2, ml_config%e10_bias1_ann2, ml_config%e10_weight2_ann2, ml_config%e10_bias2_ann2, encoder_output)
+            ANN_input_final(90:97) = encoder_output
 
-        attns1 = max(ReLU_zero, matmul(ml_config%attn_weight1_ann2, ANN_input_final) + ml_config%attn_bias1_ann2)
-        attns = matmul(ml_config%attn_weight2_ann2, attns1) + ml_config%attn_bias2_ann2
-        do i = 1, 97
-            exp_x(i) = exp(attns(i))
-        end do
+            attns1 = max(ReLU_zero, matmul(ml_config%attn_weight1_ann2, ANN_input_final) + ml_config%attn_bias1_ann2)
+            attns = matmul(ml_config%attn_weight2_ann2, attns1) + ml_config%attn_bias2_ann2
+            do i = 1, 97
+                exp_x(i) = exp(attns(i))
+            end do
 
-        sum_exp = sum(exp_x)
+            sum_exp = sum(exp_x)
 
-        do i = 1, 97
-            attns(i) = exp_x(i) / sum_exp
-        end do
+            do i = 1, 97
+                attns(i) = exp_x(i) / sum_exp
+            end do
 
-        ANN_input_final = ANN_input_final*attns
+            ANN_input_final = ANN_input_final*attns
 
-        l1_output = max(ReLU_zero, matmul(ml_config%l1_weight_ann2, ANN_input_final) + ml_config%l1_bias_ann2)
-        l2_output = max(ReLU_zero, matmul(ml_config%l2_weight_ann2, l1_output) + ml_config%l2_bias_ann2)
-        l3_output = matmul(ml_config%l3_weight_ann2, l2_output) + ml_config%l3_bias_ann2
+            l1_output = max(ReLU_zero, matmul(ml_config%l1_weight_ann2, ANN_input_final) + ml_config%l1_bias_ann2)
+            l2_output = max(ReLU_zero, matmul(ml_config%l2_weight_ann2, l1_output) + ml_config%l2_bias_ann2)
+            l3_output = matmul(ml_config%l3_weight_ann2, l2_output) + ml_config%l3_bias_ann2
                     
-        ! l3_output is the latent output
+            ! l3_output is the latent output
 
-        !decoder: from l3_output to DT_at_zl
-        d_output1 = max(ReLU_zero, matmul(ml_config%d_weight1_ann2, l3_output) + ml_config%d_bias1_ann2)
-        idx = 1
-        do i = 1, 16       ! rows
-            do j = 1, 13     ! columns
-                d_output1_reshaped(i, j) = d_output1(idx)
-                idx = idx + 1
+            !decoder: from l3_output to DT_at_zl
+            d_output1 = max(ReLU_zero, matmul(ml_config%d_weight1_ann2, l3_output) + ml_config%d_bias1_ann2)
+            idx = 1
+            do i = 1, 16       ! rows
+                do j = 1, 13     ! columns
+                    d_output1_reshaped(i, j) = d_output1(idx)
+                    idx = idx + 1
+                end do
             end do
-        end do
-        call transposed_conv1d_ann2_1(d_output1_reshaped, ml_config%d_weight2_ann2, ml_config%d_bias2_ann2, decoder_output1)
-        do i = 1, 8       ! rows
-            do j = 1, 25     ! columns
-                if (decoder_output1(i,j) < 0.0) decoder_output1(i,j) = 0.0
+            call transposed_conv1d_ann2_1(d_output1_reshaped, ml_config%d_weight2_ann2, ml_config%d_bias2_ann2, decoder_output1)
+            do i = 1, 8       ! rows
+                do j = 1, 25     ! columns
+                    if (decoder_output1(i,j) < 0.0) decoder_output1(i,j) = 0.0
+                end do
             end do
-        end do
 
-        call transposed_conv1d_ann2_2(decoder_output1, ml_config%d_weight3_ann2, ml_config%d_bias3_ann2, decoder_output2)
-        do i = 1, 4       ! rows
-            do j = 1, 50     ! columns
-                if (decoder_output2(i,j) < 0.0) decoder_output2(i,j) = 0.0
+            call transposed_conv1d_ann2_2(decoder_output1, ml_config%d_weight3_ann2, ml_config%d_bias3_ann2, decoder_output2)
+            do i = 1, 4       ! rows
+                do j = 1, 50     ! columns
+                    if (decoder_output2(i,j) < 0.0) decoder_output2(i,j) = 0.0
+                end do
             end do
-        end do
 
-        ! Final conv1d channels (4 to 1)
-        !output_DT_at_zl
-        do j = 1, 50
-            output_DT_at_zl(j) = ml_config%d_bias4_ann2
-            do k = 1, 4
-                do l = -1,1
-                if (j+l >= 1 .and. j+l <= 50) then
-                    output_DT_at_zl(j) = output_DT_at_zl(j) + ml_config%d_weight4_ann2(1,k,l+2)*decoder_output2(k,j+l)
-                endif
+            ! Final conv1d channels (4 to 1)
+            !output_DT_at_zl
+            do j = 1, 50
+                output_DT_at_zl(j) = ml_config%d_bias4_ann2
+                do k = 1, 4
+                    do l = -1,1
+                    if (j+l >= 1 .and. j+l <= 50) then
+                        output_DT_at_zl(j) = output_DT_at_zl(j) + ml_config%d_weight4_ann2(1,k,l+2)*decoder_output2(k,j+l)
+                    endif
+                    enddo
                 enddo
             enddo
-        enddo
 
-        
-
-        ml_data%T_inc(1:50) = ml_data%T_inc(1:50) + output_DT_at_zl/seconds_in_30_days
+            ml_data%T_inc(1:50) = ml_data%T_inc(1:50) + output_DT_at_zl/seconds_in_30_days
+        endif
                     
         
         
