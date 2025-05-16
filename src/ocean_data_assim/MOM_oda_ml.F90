@@ -497,8 +497,8 @@ contains
         Smin_north = MINVAL(ml_data%S_north)
         Smin_north = MINVAL(ml_data%S_south)
         Smin = MINVAL(ml_data%S)
-        Smin_5 = MINVAL((/Smin_left,Smin_right,Smin_north,Smin_south, Smin/))
-        if (Smin_5 >= 0 ) then
+        Smin5 = MINVAL((/Smin_left,Smin_right,Smin_north,Smin_south, Smin/))
+        if (Smin5 >= 0 ) then
 
         
             ReLU_zero = 0.0
