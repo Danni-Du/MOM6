@@ -47,10 +47,8 @@ type, public :: ocean_oda_ml_data
     real :: areacellobu_left_south, areacellobu_left_north, areacellobu_right_south, areacellobu_right_north
     real :: dxCu_left_south, dxCu_left_north, dxCu_right_south, dxCu_right_north
     real :: dyCv_north_left, dyCv_north_right, dyCv_south_left, dyCv_south_right
-    real :: bathyT, bathyU_left, bathyU_right, bathyV_south, bathyV_north
-    real :: bathyT_left, bathyT_right, bathyT_south, bathyT_north
-    real :: bathyU_left_south, bathyU_left_north, bathyU_right_south, bathyU_right_north
-    real :: bathyV_south_left, bathyV_south_right, bathyV_north_left, bathyV_north_right
+    real :: bathyT
+    real, dimension(3,3) :: all_bathy
     real :: mask2dT, OBCmaskCu_left, OBCmaskCu_right, OBCmaskCv_south, OBCmaskCv_north
     real :: mask2dT_left, mask2dT_right, mask2dT_north, mask2dT_south
     real :: OBCmaskCu_left_south, OBCmaskCu_left_north, OBCmaskCu_right_south, OBCmaskCu_right_north
@@ -152,7 +150,7 @@ contains
         real :: mask_Tuv
         real :: Smin, sum_exp
         real :: pi
-        real, dimension(17) :: all_bathy, all_mask
+        real, dimension(17) :: all_mask
 
 
         
@@ -215,13 +213,9 @@ contains
             if (zl_index_3mld == 0) then ! if 3 mld not found
                 ml_data%T_inc=0.0
             else
-                if (z_l(zl_index_3mld+1) > ml_data%bathyT .OR. &
-                    z_l(zl_index_3mld+1) > ml_data%bathyU_left .OR. &
-                    z_l(zl_index_3mld+1) > ml_data%bathyU_right .OR. &
-                    z_l(zl_index_3mld+1) > ml_data%bathyV_south .OR. &
-                    z_l(zl_index_3mld+1) > ml_data%bathyV_north) then
+                if (z_l(zl_index_3mld+1) > MINVAL(ml_data%all_bathy) then
                     ml_data%T_inc=0.0
-                else ! if above bathy, then get the vertical profiles
+                else ! if above all bathy, then get the vertical profiles
 
                     zi_to_sigma = ml_config%z_i(2:zl_index_3mld + 1)/mld_depth
                     allocate(thetao_zgrad_profile(zl_index_3mld),source=0.0)
@@ -408,10 +402,7 @@ contains
                     ml_data%T_inc(1:zl_index_3mld) = output_DT_at_zl
 
                     
-                    all_bathy = (/ ml_data%bathyT, ml_data%bathyU_left, ml_data%bathyU_right, ml_data%bathyV_south, bml_data%athyV_north, &
-                               ml_data%bathyT_left, ml_data%bathyT_right, ml_data%bathyT_south, ml_data%bathyT_north, &
-                               ml_data%bathyU_left_south, ml_data%bathyU_left_north, ml_data%bathyU_right_south, ml_data%bathyU_right_north, &
-                               ml_data%bathyV_south_left, ml_data%bathyV_south_right, ml_data%bathyV_north_left, ml_data%bathyV_north_right /)
+                    
                     
                     all_mask = (/ ml_data%mask2dT, ml_data%OBCmaskCu_left, ml_data%OBCmaskCu_right, ml_data%OBCmaskCv_south, ml_data%OBCmaskCv_north, &
                                ml_data%mask2dT_left, ml_data%mask2dT_right, ml_data%mask2dT_south, ml_data%mask2dT_north, &
@@ -420,9 +411,10 @@ contains
 
 
 
-                    if (MINVAL(all_bathy) > 1045 .and. MINVAL(all_mask) > 0) then
-                        ! compute all variables
-                        ! do ann2 inference
+                    if (MINVAL(ml_data%all_bathy) > 1110.0 .and. MINVAL(all_mask) > 0.0) then
+                        
+                        call oda_ml_inference_ann2(ml_config,ml_data)
+                        
                     endif
 
 
