@@ -606,7 +606,7 @@ contains
         ANN_input(258:307) = thetao_xgrad/thetao_xgrad_dist
         ANN_input(308:357) = thetao_ygrad/thetao_ygrad_dist
         ANN_input(358:407) = PRHO_xgrad/PRHO_xgrad_dist
-        ANN_input(408:457) = PRHO_xgrad/PRHO_xgrad_dist
+        ANN_input(408:457) = PRHO_ygrad/PRHO_ygrad_dist
         ANN_input(458:507) = strain/strain_dist
         
         ANN_input(508) = (log10(thetao_zgrad_dist+1E-2)+0.53)/0.4
