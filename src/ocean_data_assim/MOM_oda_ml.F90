@@ -35,6 +35,37 @@ type, public :: ocean_oda_ml_config ; private
     real, dimension(16,8,3)  :: d_weight2
     real, dimension(1,8,3)  :: d_weight3
 
+    character(len=255)  :: filename_ann2
+    real, dimension(32,97)  :: l1_weight_ann2
+    real, dimension(32,32)  :: l2_weight_ann2
+    real, dimension(8,32)  :: l3_weight_ann2
+    real, dimension(32) :: l1_bias_ann2, l2_bias_ann2, attn_bias1_ann2
+    real, dimension(8) :: l3_bias_ann2
+    real, dimension(16) :: e1_bias1_ann2, e2_bias1_ann2, e3_bias1_ann2
+    real, dimension(8) :: e1_bias2_ann2, e2_bias2_ann2, e3_bias2_ann2, d_bias2_ann2
+    real, dimension(16) :: e4_bias1_ann2, e5_bias1_ann2, e6_bias1_ann2
+    real, dimension(8) :: e4_bias2_ann2, e5_bias2_ann2, e6_bias2_ann2
+    real, dimension(16) :: e7_bias1_ann2, e8_bias1_ann2, e9_bias1_ann2,e10_bias1_ann2
+    real, dimension(8) :: e7_bias2_ann2, e8_bias2_ann2, e9_bias2_ann2,e10_bias2_ann2
+
+    real, dimension(97) :: attn_bias2_ann2
+    real, dimension(208) :: d_bias1_ann2
+    real :: d_bias4_ann2
+    real, dimension(16,1,3)  :: e1_weight1_ann2, e2_weight1_ann2, e3_weight1_ann2
+    real, dimension(8,16,3)  :: e1_weight2_ann2, e2_weight2_ann2, e3_weight2_ann2
+    real, dimension(16,1,3)  :: e4_weight1_ann2, e5_weight1_ann2, e6_weight1_ann2
+    real, dimension(8,16,3)  :: e4_weight2_ann2, e5_weight2_ann2, e6_weight2_ann2
+    real, dimension(16,1,3)  :: e7_weight1_ann2, e8_weight1_ann2, e9_weight1_ann2, e10_weight1_ann2
+    real, dimension(8,16,3)  :: e7_weight2_ann2, e8_weight2_ann2, e9_weight2_ann2, e10_weight2_ann2
+    real, dimension(32,97)  :: attn_weight1_ann2
+    real, dimension(97,32)  :: attn_weight2_ann2
+    real, dimension(208,8)  :: d_weight1_ann2
+    real, dimension(16,8,3)  :: d_weight2_ann2
+    real, dimension(8,4,3)  :: d_weight3_ann2
+    real, dimension(1,4,3)  :: d_weight4_ann2
+    real, dimension(4) :: d_bias3_ann2
+
+
     real, dimension(:), allocatable :: z_l
     real, dimension(:), allocatable :: z_i
     integer :: nk
@@ -107,6 +138,7 @@ real :: ReLU_zero = 0
 real, dimension(15) :: target_sigmas = (/0.1,0.3,0.5,0.7,0.9,1.1,1.3,1.5,1.7,1.9,2.1,2.3,2.5,2.7,2.9/)
 real, dimension(16) :: output_flux_sigmas = (/0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4, 2.6, 2.8, 3.0/)
 character(len=255)  :: danni_ANN_name = '/gpfs/f5/gfdl_sd/world-shared/Danni.Du/ECDA_data/ML/M8/M8_ens_attention_encoder_decoder_2003_2014_30epoch_L1.nc'
+character(len=255)  :: danni_ANN2_name = '/gpfs/f5/gfdl_sd/world-shared/Danni.Du/ECDA_data/ML/M8/M8_ens_attention_encoder_decoder_2003_2014_10epoch_huber_ann2.nc'
 real :: seconds_in_30_days = 3600*24*30
 
 integer :: id_clock_ml_remapping
@@ -721,6 +753,7 @@ contains
 
         ! load the NN weights and biases
         call read_ANN_file(ml_config)
+        call read_ANN2_file(ml_config)
 
         allocate(ml_config%z_l(GV%ke), source=0.0)
         ml_config%z_l = GV%sLayer
@@ -850,7 +883,7 @@ contains
         do i = 1, 8
           output_vec(i) = sum(layer2_output(i,1:50)) / 50.0
         enddo
-      end subroutine cnn_encode
+      end subroutine cnn_encode_ann2
 
     subroutine transposed_conv1d(input, weight, bias, output)
       real, dimension(16,8), intent(in) :: input             ! (in_channels, length)
@@ -1152,6 +1185,424 @@ contains
         stop
         endif
     end subroutine read_ANN_file
+
+
+    Subroutine read_ANN2_file(ml_config)
+        implicit none
+        type(ocean_oda_ml_config), pointer, intent(in) :: ml_config
+
+        
+        real, dimension(3,1,16)  :: e_weight1_temp
+        real, dimension(3,16,8)  :: e_weight2_temp
+        real, dimension(97,32)  :: attn_weight1_temp
+        real, dimension(32,97)  :: attn_weight2_temp
+        real, dimension(97,32)  :: l1_weight_temp
+        real, dimension(32,32) :: l2_weight_temp
+        real, dimension(32,8) :: l3_weight_temp
+        real, dimension(8,208) :: d_weight1_temp
+        real, dimension(3,8,16)  :: d_weight2_temp
+        real, dimension(3,4,8)  :: d_weight3_temp
+        real, dimension(3,4,1)  :: d_weight3_temp
+
+
+        integer :: ncid, varid, retval, i, j, k
+        character(len = 255) :: varname
+
+        ml_config%filename = danni_ANN2_name
+
+        ! Open the NetCDF file
+        retval = nf90_open(ml_config%filename, nf90_nowrite, ncid)
+        if (retval /= nf90_noerr) then
+        print *, 'Error: Unable to open file'
+        stop
+        endif
+
+        ! Get the variable ID
+        varname = 'e1_weight1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e_weight1_temp)
+        do i = 1, 3
+            do k = 1, 16
+                ml_config%e1_weight1_ann2(k, 1, i) = e_weight1_temp(i, 1, k)
+            end do
+       end do
+
+        varname = 'e2_weight1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e_weight1_temp)
+        do i = 1, 3
+            do k = 1, 16
+                ml_config%e2_weight1_ann2(k, 1, i) = e_weight1_temp(i, 1, k)
+            end do
+        end do
+
+        varname = 'e3_weight1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e_weight1_temp)
+        do i = 1, 3
+            do k = 1, 16
+                ml_config%e3_weight1_ann2(k, 1, i) = e_weight1_temp(i, 1, k)
+            end do
+        end do
+
+        varname = 'e4_weight1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e_weight1_temp)
+        do i = 1, 3
+            do k = 1, 16
+                ml_config%e4_weight1_ann2(k, 1, i) = e_weight1_temp(i, 1, k)
+            end do
+       end do
+
+        varname = 'e5_weight1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e_weight1_temp)
+        do i = 1, 3
+            do k = 1, 16
+                ml_config%e5_weight1_ann2(k, 1, i) = e_weight1_temp(i, 1, k)
+            end do
+        end do
+
+        varname = 'e6_weight1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e_weight1_temp)
+        do i = 1, 3
+            do k = 1, 16
+                ml_config%e6_weight1_ann2(k, 1, i) = e_weight1_temp(i, 1, k)
+            end do
+        end do
+
+    varname = 'e7_weight1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e_weight1_temp)
+        do i = 1, 3
+            do k = 1, 16
+                ml_config%e7_weight1_ann2(k, 1, i) = e_weight1_temp(i, 1, k)
+            end do
+       end do
+
+        varname = 'e8_weight1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e_weight1_temp)
+        do i = 1, 3
+            do k = 1, 16
+                ml_config%e8_weight1_ann2(k, 1, i) = e_weight1_temp(i, 1, k)
+            end do
+        end do
+
+        varname = 'e9_weight1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e_weight1_temp)
+        do i = 1, 3
+            do k = 1, 16
+                ml_config%e9_weight1_ann2(k, 1, i) = e_weight1_temp(i, 1, k)
+            end do
+        end do
+
+        varname = 'e10_weight1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e_weight1_temp)
+        do i = 1, 3
+            do k = 1, 16
+                ml_config%e10_weight1_ann2(k, 1, i) = e_weight1_temp(i, 1, k)
+            end do
+        end do
+
+
+
+        varname = 'e1_weight2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e_weight2_temp)
+        do i = 1, 3
+            do j = 1, 16
+                do k = 1, 8
+                    ml_config%e1_weight2_ann2(k, j, i) = e_weight2_temp(i, j, k)
+                end do
+            end do
+        end do
+
+        varname = 'e2_weight2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e_weight2_temp)
+        do i = 1, 3
+            do j = 1, 16
+                do k = 1, 8
+                    ml_config%e2_weight2_ann2(k, j, i) = e_weight2_temp(i, j, k)
+                end do
+            end do
+        end do
+
+        varname = 'e3_weight2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e_weight2_temp)
+        do i = 1, 3
+            do j = 1, 16
+                do k = 1, 8
+                    ml_config%e3_weight2_ann2(k, j, i) = e_weight2_temp(i, j, k)
+                end do
+            end do
+        end do
+
+        varname = 'e4_weight2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e_weight2_temp)
+        do i = 1, 3
+            do j = 1, 16
+                do k = 1, 8
+                    ml_config%e4_weight2_ann2(k, j, i) = e_weight2_temp(i, j, k)
+                end do
+            end do
+        end do
+
+        varname = 'e5_weight2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e_weight2_temp)
+        do i = 1, 3
+            do j = 1, 16
+                do k = 1, 8
+                    ml_config%e5_weight2_ann2(k, j, i) = e_weight2_temp(i, j, k)
+                end do
+            end do
+        end do
+
+        varname = 'e6_weight2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e_weight2_temp)
+        do i = 1, 3
+            do j = 1, 16
+                do k = 1, 8
+                    ml_config%e6_weight2_ann2(k, j, i) = e_weight2_temp(i, j, k)
+                end do
+            end do
+        end do
+
+        varname = 'e7_weight2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e_weight2_temp)
+        do i = 1, 3
+            do j = 1, 16
+                do k = 1, 8
+                    ml_config%e7_weight2_ann2(k, j, i) = e_weight2_temp(i, j, k)
+                end do
+            end do
+        end do
+
+        varname = 'e8_weight2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e_weight2_temp)
+        do i = 1, 3
+            do j = 1, 16
+                do k = 1, 8
+                    ml_config%e8_weight2_ann2(k, j, i) = e_weight2_temp(i, j, k)
+                end do
+            end do
+        end do
+
+        varname = 'e9_weight2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e_weight2_temp)
+        do i = 1, 3
+            do j = 1, 16
+                do k = 1, 8
+                    ml_config%e9_weight2_ann2(k, j, i) = e_weight2_temp(i, j, k)
+                end do
+            end do
+        end do
+
+        varname = 'e10_weight2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e_weight2_temp)
+        do i = 1, 3
+            do j = 1, 16
+                do k = 1, 8
+                    ml_config%e10_weight2_ann2(k, j, i) = e_weight2_temp(i, j, k)
+                end do
+            end do
+        end do
+
+
+        varname = 'd_weight2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, d_weight2_temp)
+        do i = 1, 3
+            do j = 1, 8
+                do k = 1, 16
+                    ml_config%d_weight2_ann2(k, j, i) = d_weight2_temp(i, j, k)
+                end do
+            end do
+        end do
+
+        varname = 'd_weight3'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, d_weight3_temp)
+        do i = 1, 3
+            do j = 1, 4
+                do k = 1, 8
+                    ml_config%d_weight3_ann2(k, j, i) = d_weight3_temp(i, j, k)
+                end do
+            end do
+        end do
+
+
+        varname = 'd_weight4'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, d_weight4_temp)
+        do i = 1, 3
+            do j = 1, 4
+               ml_config%d_weight4_ann2(1, j, i) = d_weight4_temp(i, j, 1)
+            end do
+        end do
+        
+
+
+        varname = 'attn_weight1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, attn_weight1_temp)
+        ml_config%attn_weight1_ann2 = transpose(attn_weight1_temp)
+
+        varname = 'attn_weight2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, attn_weight2_temp)
+        ml_config%attn_weight2_ann2 = transpose(attn_weight2_temp)
+
+        varname = 'l1_weight'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, l1_weight_temp)
+        ml_config%l1_weight_ann2 = transpose(l1_weight_temp)
+
+        varname = 'l2_weight'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, l2_weight_temp)
+        ml_config%l2_weight_ann2 = transpose(l2_weight_temp)
+        
+        varname = 'l3_weight'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, l3_weight_temp)
+        ml_config%l3_weight_ann2 = transpose(l3_weight_temp)
+
+        varname = 'd_weight1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, d_weight1_temp)
+        ml_config%d_weight1_ann2 = transpose(d_weight1_temp)
+        
+
+        varname = 'l1_bias'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%l1_bias_ann2)
+        
+        varname = 'l2_bias'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%l2_bias_ann2)
+        
+        varname = 'l3_bias'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%l3_bias_ann2)
+
+        varname = 'e1_bias1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e1_bias1_ann2)
+        varname = 'e1_bias2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e1_bias2_ann2)
+
+        varname = 'e2_bias1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e2_bias1_ann2)
+        varname = 'e2_bias2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e2_bias2_ann2)
+
+        varname = 'e3_bias1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e3_bias1_ann2)
+        varname = 'e3_bias2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e3_bias2_ann2)
+
+        varname = 'e4_bias1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e4_bias1_ann2)
+        varname = 'e4_bias2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e4_bias2_ann2)
+
+        varname = 'e5_bias1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e5_bias1_ann2)
+        varname = 'e5_bias2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e5_bias2_ann2)
+
+        varname = 'e6_bias1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e6_bias1_ann2)
+        varname = 'e6_bias2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e6_bias2_ann2)
+
+        varname = 'e7_bias1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e7_bias1_ann2)
+        varname = 'e7_bias2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e7_bias2_ann2)
+
+        varname = 'e8_bias1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e8_bias1_ann2)
+        varname = 'e8_bias2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e8_bias2_ann2)
+
+        varname = 'e9_bias1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e9_bias1_ann2)
+        varname = 'e9_bias2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e9_bias2_ann2)
+
+        varname = 'e10_bias1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e10_bias1_ann2)
+        varname = 'e10_bias2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e10_bias2_ann2)
+
+
+        varname = 'attn_bias1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%attn_bias1_ann2)
+
+        varname = 'attn_bias2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%attn_bias2_ann2)
+
+        varname = 'd_bias1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%d_bias1_ann2)
+
+        varname = 'd_bias2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%d_bias2_ann2)
+
+        varname = 'd_bias3'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%d_bias3_ann2)
+
+        varname = 'd_bias4'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%d_bias4_ann2)
+
+        
+
+        ! Close the NetCDF file
+        retval = nf90_close(ncid)
+        if (retval /= nf90_noerr) then
+        print *, 'Error: Unable to close file'
+        stop
+        endif
+    end subroutine read_ANN2_file
+
 
     ! 1D linear interpolation; it is guaranteed that x1 <= thisx < x2
     subroutine interpolate(x1,x2,y1,y2,thisx,thisy)
