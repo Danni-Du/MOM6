@@ -245,7 +245,7 @@ contains
             if (zl_index_3mld == 0) then ! if 3 mld not found
                 ml_data%T_inc=0.0
             else
-                if (z_l(zl_index_3mld+1) > MINVAL(ml_data%all_bathy) then
+                if (z_l(zl_index_3mld+1) > MINVAL(ml_data%all_bathy)) then
                     ml_data%T_inc=0.0
                 else ! if above all bathy, then get the vertical profiles
 
@@ -459,14 +459,14 @@ contains
 
     end subroutine oda_ml_inference
 
-    soubroutine oda_ml_inference_ann2(ml_config, ml_data)
+    subroutine oda_ml_inference_ann2(ml_config, ml_data)
         type(ocean_oda_ml_config), pointer, intent(in) :: ml_config
         type(ocean_oda_ml_data), pointer, intent(in) :: ml_data
         
         
         real :: thetao_top, thetao_bottom, so_top,so_bottom, PRHO_top, PRHO_bottom, CT
         real :: thetao_right, thetao_left, so_right,so_left, PRHO_right, PRHO_left
-        real :: , uo_right_top, uo_right_bottom, uo_left_top, uo_left_bottom
+        real :: uo_right_top, uo_right_bottom, uo_left_top, uo_left_bottom
         real :: vo_north_top, vo_north_bottom, vo_south_top, vo_south_bottom
         real :: uo_zgrad, vo_zgrad, vor_ls, vor_rs, vor_ln, vor_rn
         real :: strain1_ls, strain1_ln, strain1_rs, strain1_rn, strain1, strain2
@@ -744,7 +744,7 @@ contains
                     
         
         
-    end soubroutine oda_ml_inference_ann2
+    end subroutine oda_ml_inference_ann2
 
     subroutine oda_ml_init(ml_config,ml_data,GV)
         type(ocean_oda_ml_config), pointer, intent(in) :: ml_config
