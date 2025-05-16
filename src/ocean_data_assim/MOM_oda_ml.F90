@@ -471,6 +471,7 @@ contains
         real :: uo_zgrad, vo_zgrad, vor_ls, vor_rs, vor_ln, vor_rn
         real :: strain1_ls, strain1_ln, strain1_rs, strain1_rn, strain1, strain2
         real :: thetao, so, PRHO, tauamp, taucurl, taucurl_rs, taucurl_rn, taucurl_ln, taucurl_ls
+        real :: thetao_north, thetao_south, so_north, so_south, PRHO_north, PRHO_south
 
         real, dimension(50) :: thetao_zgrad, PRHO_zgrad,  vor, div, shear
         real, dimension(50) :: thetao_xgrad, PRHO_xgrad, thetao_ygrad, PRHO_ygrad
@@ -652,11 +653,6 @@ contains
         ANN_input(516) = (log10(PRHO_ygrad_dist)+5.1)/0.34
         ANN_input(517) = (log10(strain_dist)+5.35)/0.39
         
-
-
-        ANN_input(53) = (log10(thetao_zgrad_sigma_dist)+0.8)/0.5
-        ANN_input(54) = (log10(PRHO_zgrad_sigma_dist)+1.35)/0.55
-        ANN_input(55) = (log10(shear2_sigma_dist)+4.15)/0.86
 
         ANN_input_final(1:7) = ANN_input(251:257)
         ANN_input_final(8:17) = ANN_input(508:517)
@@ -1202,7 +1198,7 @@ contains
         real, dimension(8,208) :: d_weight1_temp
         real, dimension(3,8,16)  :: d_weight2_temp
         real, dimension(3,4,8)  :: d_weight3_temp
-        real, dimension(3,4,1)  :: d_weight3_temp
+        real, dimension(3,4,1)  :: d_weight4_temp
 
 
         integer :: ncid, varid, retval, i, j, k
