@@ -926,7 +926,7 @@ contains
          do t = 1, 13
             do out_ch = 1, 8
                do k = 1, 3
-                  out_pos = (t - 1)*2 - 1 + k -1 ! 2: stride; 1: padding; k: kernel (k-1), +out_padding = 0
+                  out_pos = (t - 1)*2 - 1 + k  ! 2: stride; 1: padding; k: kernel 
                   if (out_pos >= 1 .and. out_pos <= 25) then
                      output(out_ch, out_pos) = output(out_ch, out_pos) + &
                           input(in_ch, t) * weight(in_ch, out_ch, k)
