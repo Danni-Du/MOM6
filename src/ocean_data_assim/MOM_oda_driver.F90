@@ -1015,72 +1015,20 @@ subroutine get_ML_bias_correction(Time, US, CS)
     CS%ml_data%areacello = CS%model_G%areaT(i,j)
       
     CS%ml_data%bathyT = CS%model_G%bathyT(i,j)
-    CS%ml_data%all_bathy = CS%model_G%bathyT(i-1:i+1,j-1:j+1)
-    
+    CS%ml_data%bathyU_left = (CS%model_G%bathyT(i-1,j)+CS%model_G%bathyT(i,j))/2
+    CS%ml_data%bathyU_right = (CS%model_G%bathyT(i,j)+CS%model_G%bathyT(i+1,j))/2
+    CS%ml_data%bathyV_south = (CS%model_G%bathyT(i,j-1)+CS%model_G%bathyT(i,j))/2
+    CS%ml_data%bathyV_north = (CS%model_G%bathyT(i,j)+CS%model_G%bathyT(i,j+1))/2
 
     CS%ml_data%mask2dT = CS%model_G%mask2dT(i,j)
-    CS%ml_data%mask2dT_left = CS%model_G%mask2dT(i-1,j)
-    CS%ml_data%mask2dT_right = CS%model_G%mask2dT(i+1,j)
-    CS%ml_data%mask2dT_south = CS%model_G%mask2dT(i,j-1)
-    CS%ml_data%mask2dT_north = CS%model_G%mask2dT(i,j+1)
     CS%ml_data%OBCmaskCu_left = CS%model_G%OBCmaskCu(i-1,j)
     CS%ml_data%OBCmaskCu_right = CS%model_G%OBCmaskCu(i,j)
     CS%ml_data%OBCmaskCv_south = CS%model_G%OBCmaskCv(i,j-1)
-    CS%ml_data%OBCmaskCv_north = CS%model_G%OBCmaskCv(i,j)
-    CS%ml_data%OBCmaskCu_left_south = CS%model_G%OBCmaskCu(i-1,j-1)
-    CS%ml_data%OBCmaskCu_left_north = CS%model_G%OBCmaskCu(i-1,j+1)
-    CS%ml_data%OBCmaskCu_right_south = CS%model_G%OBCmaskCu(i,j-1)
-    CS%ml_data%OBCmaskCu_right_north = CS%model_G%OBCmaskCu(i,j+1)
-    CS%ml_data%OBCmaskCv_south_left = CS%model_G%OBCmaskCv(i-1,j-1)
-    CS%ml_data%OBCmaskCv_south_right = CS%model_G%OBCmaskCv(i+1,j-1)
-    CS%ml_data%OBCmaskCv_north_left = CS%model_G%OBCmaskCv(i-1,j)
-    CS%ml_data%OBCmaskCv_north_right = CS%model_G%OBCmaskCv(i+1,j)
+    CS%ml_data%OBCmaskCv_north = CS%model_G%OBCmaskCu(i,j)
+
 
     CS%ml_data%geoLatT = CS%model_G%geoLatT(i,j)
 
-    CS%ml_data%T_left = CS%Ocean_background_ave%T(i-1,j,:)
-    CS%ml_data%T_right = CS%Ocean_background_ave%T(i+1,j,:)
-    CS%ml_data%S_left = CS%Ocean_background_ave%S(i-1,j,:)
-    CS%ml_data%S_right = CS%Ocean_background_ave%S(i+1,j,:)
-    CS%ml_data%T_south = CS%Ocean_background_ave%T(i,j-1,:)
-    CS%ml_data%T_north = CS%Ocean_background_ave%T(i,j+1,:)
-    CS%ml_data%S_south = CS%Ocean_background_ave%S(i,j-1,:)
-    CS%ml_data%S_north = CS%Ocean_background_ave%S(i,j+1,:)
-
-    CS%ml_data%U_left_south = CS%Ocean_background_ave%U(i-1,j-1,:)
-    CS%ml_data%U_left_north = CS%Ocean_background_ave%U(i-1,j+1,:)
-    CS%ml_data%U_right_south = CS%Ocean_background_ave%U(i,j-1,:)
-    CS%ml_data%U_right_north = CS%Ocean_background_ave%U(i,j+1,:)
-    CS%ml_data%V_north_left = CS%Ocean_background_ave%V(i-1,j,:)
-    CS%ml_data%V_north_right = CS%Ocean_background_ave%V(i+1,j,:)
-    CS%ml_data%V_south_left = CS%Ocean_background_ave%V(i-1,j-1,:)
-    CS%ml_data%V_south_right = CS%Ocean_background_ave%V(i+1,j-1,:)
-
-    CS%ml_data%taux_left_south = CS%Ocean_background_ave%taux(i-1,j-1)
-    CS%ml_data%taux_left_north = CS%Ocean_background_ave%taux(i-1,j+1)
-    CS%ml_data%taux_right_south = CS%Ocean_background_ave%taux(i,j-1)
-    CS%ml_data%taux_right_north = CS%Ocean_background_ave%taux(i,j+1)
-    CS%ml_data%tauy_north_left = CS%Ocean_background_ave%tauy(i-1,j)
-    CS%ml_data%tauy_north_right = CS%Ocean_background_ave%tauy(i+1,j)
-    CS%ml_data%tauy_south_left = CS%Ocean_background_ave%tauy(i-1,j-1)
-    CS%ml_data%tauy_south_right = CS%Ocean_background_ave%tauy(i+1,j-1)
-
-    CS%ml_data%dxCu_left = CS%model_G%dxCu(i-1,j)
-    CS%ml_data%dxCu_right = CS%model_G%dxCu(i,j)
-    CS%ml_data%dyCv_north = CS%model_G%dyCv(i,j)
-    CS%ml_data%dyCv_south = CS%model_G%dyCv(i,j-1)
-    CS%ml_data%areacellobu_left_south = CS%model_G%areaBu(i-1,j-1)
-    CS%ml_data%areacellobu_left_north = CS%model_G%areaBu(i-1,j)
-    CS%ml_data%areacellobu_right_south = CS%model_G%areaBu(i,j-1)
-    CS%ml_data%areacellobu_right_north = CS%model_G%areaBu(i,j)
-    CS%ml_data%dxCu_left_south = CS%model_G%dxCu(i-1,j-1)
-    CS%ml_data%dxCu_left_north = CS%model_G%dxCu(i-1,j+1)
-    CS%ml_data%dxCu_right_south = CS%model_G%dxCu(i,j-1)
-    CS%ml_data%dxCu_right_north = CS%model_G%dxCu(i,j+1)
-    CS%ml_data%dyCv_north_left = CS%model_G%dyCv(i-1,j)
-    CS%ml_data%dyCv_north_right = CS%model_G%dyCv(i+1,j)
-    CS%ml_data%dyCv_south_left = CS%model_G%dyCv(i-1,j-1)
-    CS%ml_data%dyCv_south_right = CS%model_G%dyCv(i+1,j-1)
     
 
     !! Call inference subroutine with the concatenated vector
