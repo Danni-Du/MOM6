@@ -495,7 +495,7 @@ contains
         Smin_left = MINVAL(ml_data%S_left)
         Smin_right = MINVAL(ml_data%S_right)
         Smin_north = MINVAL(ml_data%S_north)
-        Smin_north = MINVAL(ml_data%S_south)
+        Smin_south = MINVAL(ml_data%S_south)
         Smin = MINVAL(ml_data%S)
         Smin5 = MINVAL((/Smin_left,Smin_right,Smin_north,Smin_south, Smin/))
         if (Smin5 >= 0 ) then
