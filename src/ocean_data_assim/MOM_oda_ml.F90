@@ -35,37 +35,7 @@ type, public :: ocean_oda_ml_config ; private
     real, dimension(16,8,3)  :: d_weight2
     real, dimension(1,8,3)  :: d_weight3
 
-    character(len=255)  :: filename_ann2
-    real, dimension(32,97)  :: l1_weight_ann2
-    real, dimension(32,32)  :: l2_weight_ann2
-    real, dimension(8,32)  :: l3_weight_ann2
-    real, dimension(32) :: l1_bias_ann2, l2_bias_ann2, attn_bias1_ann2
-    real, dimension(8) :: l3_bias_ann2
-    real, dimension(16) :: e1_bias1_ann2, e2_bias1_ann2, e3_bias1_ann2
-    real, dimension(8) :: e1_bias2_ann2, e2_bias2_ann2, e3_bias2_ann2, d_bias2_ann2
-    real, dimension(16) :: e4_bias1_ann2, e5_bias1_ann2, e6_bias1_ann2
-    real, dimension(8) :: e4_bias2_ann2, e5_bias2_ann2, e6_bias2_ann2
-    real, dimension(16) :: e7_bias1_ann2, e8_bias1_ann2, e9_bias1_ann2,e10_bias1_ann2
-    real, dimension(8) :: e7_bias2_ann2, e8_bias2_ann2, e9_bias2_ann2,e10_bias2_ann2
-
-    real, dimension(97) :: attn_bias2_ann2
-    real, dimension(208) :: d_bias1_ann2
-    real :: d_bias4_ann2
-    real, dimension(16,1,3)  :: e1_weight1_ann2, e2_weight1_ann2, e3_weight1_ann2
-    real, dimension(8,16,3)  :: e1_weight2_ann2, e2_weight2_ann2, e3_weight2_ann2
-    real, dimension(16,1,3)  :: e4_weight1_ann2, e5_weight1_ann2, e6_weight1_ann2
-    real, dimension(8,16,3)  :: e4_weight2_ann2, e5_weight2_ann2, e6_weight2_ann2
-    real, dimension(16,1,3)  :: e7_weight1_ann2, e8_weight1_ann2, e9_weight1_ann2, e10_weight1_ann2
-    real, dimension(8,16,3)  :: e7_weight2_ann2, e8_weight2_ann2, e9_weight2_ann2, e10_weight2_ann2
-    real, dimension(32,97)  :: attn_weight1_ann2
-    real, dimension(97,32)  :: attn_weight2_ann2
-    real, dimension(208,8)  :: d_weight1_ann2
-    real, dimension(16,8,3)  :: d_weight2_ann2
-    real, dimension(8,4,3)  :: d_weight3_ann2
-    real, dimension(1,4,3)  :: d_weight4_ann2
-    real, dimension(4) :: d_bias3_ann2
-
-
+    
     real, dimension(:), allocatable :: z_l
     real, dimension(:), allocatable :: z_i
     integer :: nk
