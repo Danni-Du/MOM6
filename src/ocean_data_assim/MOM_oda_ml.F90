@@ -288,9 +288,9 @@ contains
                     ANN_input(37) = ml_data%sw/400
                     ANN_input(38:52) = shear2_sigma/shear2_sigma_dist
 
-                    ANN_input(53) = (log10(thetao_zgrad_sigma_dist)+0.8)/0.5
-                    ANN_input(54) = (log10(PRHO_zgrad_sigma_dist)+1.35)/0.55
-                    ANN_input(55) = (log10(shear2_sigma_dist)+4.15)/0.86
+                    ANN_input(53) = (log10(thetao_zgrad_sigma_dist+1E-3)+0.78)/0.48
+                    ANN_input(54) = (log10(PRHO_zgrad_sigma_dist+1E-3)+1.32)/0.52
+                    ANN_input(55) = (log10(shear2_sigma_dist+1E-8)+4.18)/0.86
 
                     ANN_input_final(1:7) = ANN_input(31:37)
                     ANN_input_final(8:10) = ANN_input(53:55)
