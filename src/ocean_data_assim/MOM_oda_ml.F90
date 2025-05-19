@@ -6,7 +6,7 @@ module MOM_oda_ml_mod
 ! MOM infrastructure
 use MOM_cpu_clock, only : cpu_clock_begin, cpu_clock_end, cpu_clock_id
 use MOM_verticalGrid, only : verticalGrid_type
-use gsw_mod_toolbox, only : gsw_ct_from_pt, gsw_sigma0
+use gsw_mod_toolbox, only : gsw_ct_from_pt, gsw_sigma0, gsw_sa_from_sp, gsw_p_from_z
 use netcdf, only : nf90_open, nf90_inq_varid, nf90_get_var, nf90_close, nf90_close
 use netcdf, only : nf90_nowrite, nf90_noerr
 
@@ -66,7 +66,7 @@ type, public :: ocean_oda_ml_data
     !! Output predictions
     real, pointer, dimension(:) :: T_inc=>NULL()
     real, pointer, dimension(:) :: S_inc=>NULL()
-    real :: geoLatT
+    real :: geoLatT, geoLonT
 
 
 end type ocean_oda_ml_data
@@ -94,7 +94,7 @@ contains
         type(ocean_oda_ml_data), pointer, intent(in) :: ml_data
         
         real :: SA, PT, CT, PRHO ,tauamp, rho0
-        real, dimension(:), allocatable :: PRHO_profile
+        real, dimension(:), allocatable :: PRHO_profile, sa_profile
         real :: PRHO_mld, PRHO_10m 
         real :: mld_depth
         integer :: zl_index_mld, zl_index10m, zl_index_3mld, right_index
@@ -119,7 +119,8 @@ contains
         integer :: zz, i, j, idx, k, l
         real :: mask_Tuv
         real :: Smin, sum_exp
-        real :: pi
+        real :: pi, p_dbar
+        
         
 
 
@@ -129,6 +130,18 @@ contains
 
         rho0 = 1035
         pi = acos(-1.0)
+
+        allocate(z_l(ml_config%nk),source=0.0)
+        z_l = ml_config%z_l
+
+        allocate(sa_profile(ml_data%nk),source=0.0)
+        do zz  = 1, ml_data%nk
+            p_dbar = gsw_p_from_z(-z_l(zz), ml_data%geoLatT)
+            sa_profile(zz) = gsw_sa_from_sp(ml_data%S(zz), p_dbar, ml_data%geoLonT, ml_data%geoLatT)
+        end do
+
+        ml_data%S = sa_profile
+
         
         mask_Tuv = ml_data%mask2dT + ml_data%OBCmaskCu_left + ml_data%OBCmaskCu_right + ml_data%OBCmaskCv_south + ml_data%OBCmaskCv_north
         Smin = MINVAL(ml_data%S)
@@ -139,9 +152,6 @@ contains
         elseif (ml_data%T(1) < -0.054*ml_data%S(1)) then
             ml_data%T_inc=0.0
         else
-            allocate(z_l(ml_config%nk),source=0.0)
-            z_l = ml_config%z_l
-
             allocate(PRHO_profile(ml_data%nk),source=0.0)
             do zz  = 1, ml_data%nk
                 SA = ml_data%S(zz)
@@ -200,18 +210,20 @@ contains
 
                     do zz = 1, zl_index_3mld
                         thetao_top = ml_data%T(zz)
-                        so_top = ml_data%S(zz)
-                        CT = gsw_ct_from_pt(so_top,thetao_top)
-                        PRHO_top = gsw_sigma0(so_top,CT)
+                        !so_top = ml_data%S(zz)
+                        !CT = gsw_ct_from_pt(so_top,thetao_top)
+                        !PRHO_top = gsw_sigma0(so_top,CT)
+                        PRHO_top = PRHO_profile(zz)
                         uo_right_top = ml_data%U_right(zz)
                         uo_left_top = ml_data%U_left(zz)
                         vo_north_top = ml_data%V_north(zz)
                         vo_south_top = ml_data%V_south(zz)
                     
                         thetao_bottom = ml_data%T(zz+1)
-                        so_bottom = ml_data%S(zz+1)
-                        CT = gsw_ct_from_pt(so_bottom,thetao_bottom)
-                        PRHO_bottom = gsw_sigma0(so_bottom,CT)
+                        !so_bottom = ml_data%S(zz+1)
+                        !CT = gsw_ct_from_pt(so_bottom,thetao_bottom)
+                        !PRHO_bottom = gsw_sigma0(so_bottom,CT)
+                        PRHO_bottom = PRHO_profile(zz+1)
                         uo_right_bottom = ml_data%U_right(zz+1)
                         uo_left_bottom = ml_data%U_left(zz+1)
                         vo_north_bottom = ml_data%V_north(zz+1)
