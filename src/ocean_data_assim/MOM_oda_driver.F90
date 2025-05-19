@@ -1028,6 +1028,8 @@ subroutine get_ML_bias_correction(Time, US, CS)
 
 
     CS%ml_data%geoLatT = CS%model_G%geoLatT(i,j)
+    CS%ml_data%geoLonT = CS%model_G%geoLonT(i,j)
+
 
     
 
