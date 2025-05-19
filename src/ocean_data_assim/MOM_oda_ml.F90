@@ -146,7 +146,7 @@ contains
                 sa_profile(zz) = gsw_sa_from_sp(ml_data%S(zz), p_dbar, ml_data%geoLonT, ml_data%geoLatT)
             end do
 
-            ml_data%S = sa_profile
+            !ml_data%S = sa_profile
             Smin = MINVAL(ml_data%S)
         end if
             
