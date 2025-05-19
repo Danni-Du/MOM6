@@ -143,8 +143,8 @@ contains
             allocate(sa_profile(ml_data%nk),source=0.0)
             do zz  = 1, ml_data%nk
                 p_dbar = gsw_p_from_z(-z_l(zz), ml_data%geoLatT)
-                p_dbar = z_l(zz)
-                sa_profile(zz) = gsw_sa_from_sp(ml_data%S(zz), p_dbar, ml_data%geoLonT, ml_data%geoLatT)
+                !sa_profile(zz) = gsw_sa_from_sp(ml_data%S(zz), p_dbar, ml_data%geoLonT, ml_data%geoLatT)
+                sa_profile(zz) = ml_data%S(zz) + p_dbar/z_l(zz)
             end do
 
             ml_data%S = sa_profile
