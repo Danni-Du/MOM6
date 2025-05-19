@@ -215,11 +215,11 @@ contains
             if (zl_index_3mld == 0) then ! if 3 mld not found
                 ml_data%T_inc=0.0
             else
-                if (z_l(zl_index_3mld+1) > ml_data%bathyT .OR. &
-                    z_l(zl_index_3mld+1) > ml_data%bathyU_left .OR. &
-                    z_l(zl_index_3mld+1) > ml_data%bathyU_right .OR. &
-                    z_l(zl_index_3mld+1) > ml_data%bathyV_south .OR. &
-                    z_l(zl_index_3mld+1) > ml_data%bathyV_north) then
+                if (ml_config%z_i(zl_index_3mld+2) > ml_data%bathyT .OR. &
+                    ml_config%z_i(zl_index_3mld+2) > ml_data%bathyU_left .OR. &
+                    ml_config%z_i(zl_index_3mld+2) > ml_data%bathyU_right .OR. &
+                    ml_config%z_i(zl_index_3mld+2) > ml_data%bathyV_south .OR. &
+                    ml_config%z_i(zl_index_3mld+2) > ml_data%bathyV_north) then
                     ml_data%T_inc=0.0
                 else ! if above all bathy, then get the vertical profiles
 
