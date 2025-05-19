@@ -91,7 +91,7 @@ contains
 
     subroutine oda_ml_inference(ml_config,ml_data)
         type(ocean_oda_ml_config), pointer, intent(in) :: ml_config
-        type(ocean_oda_ml_data), pointer, intent(in) :: ml_data
+        type(ocean_oda_ml_data), pointer, intent(inout) :: ml_data
         
         real :: SA, PT, CT, PRHO ,tauamp, rho0
         real, dimension(:), allocatable :: PRHO_profile, sa_profile
@@ -131,20 +131,26 @@ contains
         rho0 = 1035
         pi = acos(-1.0)
 
-        allocate(z_l(ml_config%nk),source=0.0)
-        z_l = ml_config%z_l
-
-        !allocate(sa_profile(ml_data%nk),source=0.0)
-        !do zz  = 1, ml_data%nk
-            !p_dbar = gsw_p_from_z(-z_l(zz), ml_data%geoLatT)
-            !sa_profile(zz) = gsw_sa_from_sp(ml_data%S(zz), p_dbar, ml_data%geoLonT, ml_data%geoLatT)
-        !end do
-
-        !ml_data%S = sa_profile
+        
 
         
         mask_Tuv = ml_data%mask2dT + ml_data%OBCmaskCu_left + ml_data%OBCmaskCu_right + ml_data%OBCmaskCv_south + ml_data%OBCmaskCv_north
-        Smin = MINVAL(ml_data%S)
+
+        if (mask_Tuv == 5.0) then 
+            allocate(z_l(ml_config%nk),source=0.0)
+            z_l = ml_config%z_l
+
+            allocate(sa_profile(ml_data%nk),source=0.0)
+            do zz  = 1, ml_data%nk
+                p_dbar = gsw_p_from_z(-z_l(zz), ml_data%geoLatT)
+                sa_profile(zz) = gsw_sa_from_sp(ml_data%S(zz), p_dbar, ml_data%geoLonT, ml_data%geoLatT)
+            end do
+
+            ml_data%S = sa_profile
+            Smin = MINVAL(ml_data%S)
+        end if
+            
+        
         if (mask_Tuv < 5.0) then
             ml_data%T_inc=0.0
         elseif (Smin < 0.0) then
@@ -405,8 +411,8 @@ contains
     
 
     subroutine oda_ml_init(ml_config,ml_data,GV)
-        type(ocean_oda_ml_config), pointer, intent(in) :: ml_config
-        type(ocean_oda_ml_data), pointer, intent(in) :: ml_data
+        type(ocean_oda_ml_config), pointer, intent(inout) :: ml_config
+        type(ocean_oda_ml_data), pointer, intent(inout) :: ml_data
         type(verticalGrid_type), pointer, intent(in) :: GV   !< The ocean's vertical grid structure
 
         ! load the NN weights and biases
@@ -430,7 +436,7 @@ contains
     end subroutine oda_ml_end
 
     subroutine init_oda_ml_features(ml_data,nk)
-        type(ocean_oda_ml_data), pointer, intent(in) :: ml_data
+        type(ocean_oda_ml_data), pointer, intent(inout) :: ml_data
         integer, intent(in) :: nk
 
         ml_data%nk = nk
@@ -533,7 +539,7 @@ contains
 
     Subroutine read_ANN_file(ml_config)
         implicit none
-        type(ocean_oda_ml_config), pointer, intent(in) :: ml_config
+        type(ocean_oda_ml_config), pointer, intent(inout) :: ml_config
 
         
         real, dimension(3,1,16)  :: e1_weight1_temp, e2_weight1_temp, e3_weight1_temp
