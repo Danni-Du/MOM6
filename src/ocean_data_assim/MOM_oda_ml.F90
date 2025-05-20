@@ -119,7 +119,7 @@ contains
         integer :: zz, i, j, idx, k, l
         real :: mask_Tuv
         real :: Smin, sum_exp
-        real :: pi, p_dbar
+        real :: pi, p_dbar, PSSS
         
         
 
@@ -137,6 +137,7 @@ contains
         mask_Tuv = ml_data%mask2dT + ml_data%OBCmaskCu_left + ml_data%OBCmaskCu_right + ml_data%OBCmaskCv_south + ml_data%OBCmaskCv_north
 
         if (mask_Tuv == 5.0) then 
+            PSSS = ml_data%S(1)
             allocate(z_l(ml_config%nk),source=0.0)
             z_l = ml_config%z_l
 
@@ -147,8 +148,9 @@ contains
                 
             end do
 
-            ml_data%S = sa_profile
-            Smin = MINVAL(ml_data%S)
+            !ml_data%S = sa_profile
+            !Smin = MINVAL(ml_data%S)
+            Smin = MINVAL(sa_profile)
         end if
             
         
@@ -156,7 +158,7 @@ contains
             ml_data%T_inc=0.0
         elseif (Smin < 0.0) then
             ml_data%T_inc=0.0
-        elseif (ml_data%T(1) < -0.054*ml_data%S(1)) then
+        elseif (ml_data%T(1) < -0.054*PSSS) then
             ml_data%T_inc=0.0
         else
             allocate(PRHO_profile(ml_data%nk),source=0.0)
@@ -219,20 +221,20 @@ contains
 
                     do zz = 1, zl_index_3mld
                         thetao_top = ml_data%T(zz)
-                        !so_top = ml_data%S(zz)
-                        !CT = gsw_ct_from_pt(so_top,thetao_top)
-                        !PRHO_top = gsw_sigma0(so_top,CT)
-                        PRHO_top = PRHO_profile(zz)
+                        so_top = sa_profile(zz)
+                        CT = gsw_ct_from_pt(so_top,thetao_top)
+                        PRHO_top = gsw_sigma0(so_top,CT)
+                        !PRHO_top = PRHO_profile(zz)
                         uo_right_top = ml_data%U_right(zz)
                         uo_left_top = ml_data%U_left(zz)
                         vo_north_top = ml_data%V_north(zz)
                         vo_south_top = ml_data%V_south(zz)
                     
                         thetao_bottom = ml_data%T(zz+1)
-                        !so_bottom = ml_data%S(zz+1)
-                        !CT = gsw_ct_from_pt(so_bottom,thetao_bottom)
-                        !PRHO_bottom = gsw_sigma0(so_bottom,CT)
-                        PRHO_bottom = PRHO_profile(zz+1)
+                        so_bottom = sa_profile(zz+1)
+                        CT = gsw_ct_from_pt(so_bottom,thetao_bottom)
+                        PRHO_bottom = gsw_sigma0(so_bottom,CT)
+                        !PRHO_bottom = PRHO_profile(zz+1)
                         uo_right_bottom = ml_data%U_right(zz+1)
                         uo_left_bottom = ml_data%U_left(zz+1)
                         vo_north_bottom = ml_data%V_north(zz+1)
@@ -310,8 +312,7 @@ contains
                     ANN_input(38:52) = shear2_sigma/shear2_sigma_dist
 
                     ANN_input(53) = (log10(thetao_zgrad_sigma_dist+1E-3)+0.78)/0.48
-                    !ANN_input(54) = (log10(PRHO_zgrad_sigma_dist+1E-3)+1.32)/0.52
-                    ANN_input(54) = 0
+                    ANN_input(54) = (log10(PRHO_zgrad_sigma_dist+1E-3)+1.32)/0.52
                     ANN_input(55) = (log10(shear2_sigma_dist+1E-8)+4.17)/0.86
 
                     ANN_input_final(1:7) = ANN_input(31:37)
