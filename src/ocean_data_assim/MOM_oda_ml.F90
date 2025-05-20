@@ -310,7 +310,7 @@ contains
                     ANN_input(38:52) = shear2_sigma/shear2_sigma_dist
 
                     ANN_input(53) = (log10(thetao_zgrad_sigma_dist+1E-3)+0.78)/0.48
-                    ANN_input(54) = (log10(PRHO_zgrad_sigma_dist+1E-3)+1.32)/0.52
+                    ANN_input(54) = (log10(PRHO_zgrad_sigma_dist+1E-2)+1.32)/0.52
                     ANN_input(55) = (log10(shear2_sigma_dist+1E-8)+4.17)/0.86
 
                     ANN_input_final(1:7) = ANN_input(31:37)
