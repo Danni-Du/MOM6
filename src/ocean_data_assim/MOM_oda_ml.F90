@@ -76,7 +76,7 @@ real :: reference_depth = 10
 real :: ReLU_zero = 0
 real, dimension(15) :: target_sigmas = (/0.1,0.3,0.5,0.7,0.9,1.1,1.3,1.5,1.7,1.9,2.1,2.3,2.5,2.7,2.9/)
 real, dimension(16) :: output_flux_sigmas = (/0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4, 2.6, 2.8, 3.0/)
-character(len=255)  :: danni_ANN_name = '/gpfs/f5/gfdl_sd/world-shared/Danni.Du/ECDA_data/ML/M8/M8_Sfixed_ens_attention_encoder_decoder_2003_2014_40epoch_L1.nc'
+character(len=255)  :: danni_ANN_name = '/gpfs/f5/gfdl_sd/world-shared/Danni.Du/ECDA_data/ML/M8/M8_Sfixed_insensitive_ens_attention_encoder_decoder_2003_2014_1epoch_L1.nc'
 real :: seconds_in_30_days = 3600*24*30
 
 integer :: id_clock_ml_remapping
@@ -103,7 +103,7 @@ contains
         real :: PRHO_top, PRHO_bottom, uo_right_top, uo_right_bottom, uo_left_top, uo_left_bottom
         real :: vo_north_top, vo_north_bottom, vo_south_top, vo_south_bottom
         real, dimension(15) :: thetao_zgrad_sigma, so_zgrad_sigma, PRHO_zgrad_sigma, div_sigma, output_DT_sigmas, uo_zgrad_sigma, vo_zgrad_sigma, shear2_sigma
-        real :: thetao_zgrad_sigma_dist, PRHO_zgrad_sigma_dist, div_sigma_dist, shear2_sigma_dist, coef
+        real :: thetao_zgrad_sigma_dist, PRHO_zgrad_sigma_dist, div_sigma_dist, shear2_sigma_dist, coef, so_zgrad_sigma_dist
         real, dimension(:), allocatable :: thetao_zgrad_profile, so_zgrad_profile, div_profile, PRHO_zgrad_profile, uo_zgrad_profile, vo_zgrad_profile
         real, dimension(55) :: ANN_input
         real, dimension(34) :: ANN_input_final, exp_x, attns
@@ -141,16 +141,17 @@ contains
             allocate(z_l(ml_config%nk),source=0.0)
             z_l = ml_config%z_l
 
-            allocate(sa_profile(ml_data%nk),source=0.0)
-            do zz  = 1, ml_data%nk
-                p_dbar = gsw_p_from_z(-z_l(zz), ml_data%geoLatT)
-                sa_profile(zz) = gsw_sa_from_sp(ml_data%S(zz), p_dbar, ml_data%geoLonT, ml_data%geoLatT)
+            !allocate(sa_profile(ml_data%nk),source=0.0)
+            !do zz  = 1, ml_data%nk
+                !p_dbar = gsw_p_from_z(-z_l(zz), ml_data%geoLatT)
+                !sa_profile(zz) = gsw_sa_from_sp(ml_data%S(zz), p_dbar, ml_data%geoLonT, ml_data%geoLatT)
                 
-            end do
-
+            !end do
             !ml_data%S = sa_profile
-            !Smin = MINVAL(ml_data%S)
-            Smin = MINVAL(sa_profile)
+            !Smin = MINVAL(sa_profile)
+
+            Smin = MINVAL(ml_data%S) 
+            
         end if
             
         
@@ -163,7 +164,8 @@ contains
         else
             allocate(PRHO_profile(ml_data%nk),source=0.0)
             do zz  = 1, ml_data%nk
-                SA = ml_data%S(zz)
+                p_dbar = gsw_p_from_z(-z_l(zz), ml_data%geoLatT)
+                SA = gsw_sa_from_sp(ml_data%S(zz), p_dbar, ml_data%geoLonT, ml_data%geoLatT)
                 PT = ml_data%T(zz)
                 CT = gsw_ct_from_pt(SA, PT)
                 PRHO = gsw_sigma0(SA, CT)
@@ -214,42 +216,42 @@ contains
 
                     zi_to_sigma = ml_config%z_i(2:zl_index_3mld + 1)/mld_depth
                     allocate(thetao_zgrad_profile(zl_index_3mld),source=0.0)
-                    !allocate(so_zgrad_profile(zl_index_3mld),source=0.0)
-                    allocate(PRHO_zgrad_profile(zl_index_3mld),source=0.0)
+                    allocate(so_zgrad_profile(zl_index_3mld),source=0.0)
+                    !allocate(PRHO_zgrad_profile(zl_index_3mld),source=0.0)
                     allocate(uo_zgrad_profile(zl_index_3mld),source=0.0)
                     allocate(vo_zgrad_profile(zl_index_3mld),source=0.0)
 
                     do zz = 1, zl_index_3mld
                         thetao_top = ml_data%T(zz)
-                        !so_top = sa_profile(zz)
+                        so_top = ml_data%S(zz)
                         !CT = gsw_ct_from_pt(so_top,thetao_top)
                         !PRHO_top = gsw_sigma0(so_top,CT)
-                        PRHO_top = PRHO_profile(zz)
+                        !PRHO_top = PRHO_profile(zz)
                         uo_right_top = ml_data%U_right(zz)
                         uo_left_top = ml_data%U_left(zz)
                         vo_north_top = ml_data%V_north(zz)
                         vo_south_top = ml_data%V_south(zz)
                     
                         thetao_bottom = ml_data%T(zz+1)
-                        !so_bottom = sa_profile(zz+1)
+                        so_bottom = ml_data%S(zz+1)
                         !CT = gsw_ct_from_pt(so_bottom,thetao_bottom)
                         !PRHO_bottom = gsw_sigma0(so_bottom,CT)
-                        PRHO_bottom = PRHO_profile(zz+1)
+                        !PRHO_bottom = PRHO_profile(zz+1)
                         uo_right_bottom = ml_data%U_right(zz+1)
                         uo_left_bottom = ml_data%U_left(zz+1)
                         vo_north_bottom = ml_data%V_north(zz+1)
                         vo_south_bottom = ml_data%V_south(zz+1)
 
                         thetao_zgrad_profile(zz) = (thetao_top - thetao_bottom)/(z_l(zz+1) - z_l(zz))
-                        !so_zgrad_profile(zz) = (so_top - so_bottom)/(z_l(zz+1) - z_l(zz))
-                        PRHO_zgrad_profile(zz) = (PRHO_top - PRHO_bottom)/(z_l(zz+1) - z_l(zz))
+                        so_zgrad_profile(zz) = (so_top - so_bottom)/(z_l(zz+1) - z_l(zz))
+                        !PRHO_zgrad_profile(zz) = (PRHO_top - PRHO_bottom)/(z_l(zz+1) - z_l(zz))
                         uo_zgrad_profile(zz) = (uo_right_top-uo_right_bottom+uo_left_top-uo_left_bottom)/(2*(z_l(zz+1) - z_l(zz)))
                         vo_zgrad_profile(zz) = (vo_north_top-vo_north_bottom+vo_south_top-vo_south_bottom)/(2*(z_l(zz+1) - z_l(zz)))
                     end do
 
                     zl_to_sigma = z_l(1:zl_index_3mld)/mld_depth
 
-                    allocate(div_profile(zl_index_3mld),source=0.0)
+                    !allocate(div_profile(zl_index_3mld),source=0.0)
 
                     !do zz = 1, zl_index_3mld
                         !call compute_current_divergence(ml_data%U_left(zz)*ml_data%dyCu_left, ml_data%U_right(zz)*ml_data%dyCu_right, &
@@ -265,17 +267,17 @@ contains
                         ! quality control done in the previous steps, so that right_index >=1 and right_index <= zl_index_3mld
                         if (right_index == 1) then
                             thetao_zgrad_sigma(i) = thetao_zgrad_profile(1)
-                            !so_zgrad_sigma(i) = so_zgrad_profile(1)
-                            PRHO_zgrad_sigma(i) = PRHO_zgrad_profile(1)
+                            so_zgrad_sigma(i) = so_zgrad_profile(1)
+                            !PRHO_zgrad_sigma(i) = PRHO_zgrad_profile(1)
                             uo_zgrad_sigma(i) = uo_zgrad_profile(1)
                             vo_zgrad_sigma(i) = vo_zgrad_profile(1)
                         else
                             call interpolate(zi_to_sigma(right_index-1),zi_to_sigma(right_index),thetao_zgrad_profile(right_index-1), &
                                     thetao_zgrad_profile(right_index),target_sigmas(i),thetao_zgrad_sigma(i))
-                            !call interpolate(zi_to_sigma(right_index-1),zi_to_sigma(right_index),so_zgrad_profile(right_index-1), &
-                                    !so_zgrad_profile(right_index),target_sigmas(i),so_zgrad_sigma(i))
-                            call interpolate(zi_to_sigma(right_index-1),zi_to_sigma(right_index),PRHO_zgrad_profile(right_index-1), &
-                                    PRHO_zgrad_profile(right_index),target_sigmas(i),PRHO_zgrad_sigma(i))
+                            call interpolate(zi_to_sigma(right_index-1),zi_to_sigma(right_index),so_zgrad_profile(right_index-1), &
+                                    so_zgrad_profile(right_index),target_sigmas(i),so_zgrad_sigma(i))
+                            !call interpolate(zi_to_sigma(right_index-1),zi_to_sigma(right_index),PRHO_zgrad_profile(right_index-1), &
+                                    !PRHO_zgrad_profile(right_index),target_sigmas(i),PRHO_zgrad_sigma(i))
                             call interpolate(zi_to_sigma(right_index-1),zi_to_sigma(right_index),uo_zgrad_profile(right_index-1), &
                                     uo_zgrad_profile(right_index),target_sigmas(i),uo_zgrad_sigma(i))
                             call interpolate(zi_to_sigma(right_index-1),zi_to_sigma(right_index),vo_zgrad_profile(right_index-1), &
@@ -294,13 +296,15 @@ contains
 
                     ! subroutine(input,DA tendency)
                     thetao_zgrad_sigma_dist = sqrt(sum(thetao_zgrad_sigma**2))
-                    PRHO_zgrad_sigma_dist = sqrt(sum(PRHO_zgrad_sigma**2))
+                    so_zgrad_sigma_dist = sqrt(sum(so_zgrad_sigma**2))
+                    !PRHO_zgrad_sigma_dist = sqrt(sum(PRHO_zgrad_sigma**2))
                     !div_sigma_dist = sqrt(sum(div_sigma**2))
                     shear2_sigma = uo_zgrad_sigma**2 + vo_zgrad_sigma**2
                     shear2_sigma_dist = sqrt(sum(shear2_sigma**2))
                     
                     ANN_input(1:15) = thetao_zgrad_sigma/thetao_zgrad_sigma_dist
-                    ANN_input(16:30) = PRHO_zgrad_sigma/PRHO_zgrad_sigma_dist
+                    !ANN_input(16:30) = PRHO_zgrad_sigma/PRHO_zgrad_sigma_dist
+                    ANN_input(16:30) = so_zgrad_sigma/so_zgrad_sigma_dist
                     
                     ANN_input(31) = (log10(mld_depth) - 1.0) / 2.5
                     ANN_input(32) = sin(pi / 180.0 * ml_data%geoLatT)
@@ -312,7 +316,8 @@ contains
                     ANN_input(38:52) = shear2_sigma/shear2_sigma_dist
 
                     ANN_input(53) = (log10(thetao_zgrad_sigma_dist+1E-3)+0.78)/0.48
-                    ANN_input(54) = (log10(PRHO_zgrad_sigma_dist+1E-3)+1.32)/0.52
+                    !ANN_input(54) = (log10(PRHO_zgrad_sigma_dist+1E-3)+1.32)/0.52
+                    ANN_input(54) = (log10(so_zgrad_sigma_dist+1E-5)+1.84)/0.55
                     ANN_input(55) = (log10(shear2_sigma_dist+1E-8)+4.17)/0.86
 
                     ANN_input_final(1:7) = ANN_input(31:37)
