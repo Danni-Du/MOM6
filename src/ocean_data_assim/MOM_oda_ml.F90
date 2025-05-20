@@ -147,7 +147,7 @@ contains
                 
             end do
 
-            !ml_data%S = sa_profile
+            ml_data%S = sa_profile
             Smin = MINVAL(ml_data%S)
         end if
             
