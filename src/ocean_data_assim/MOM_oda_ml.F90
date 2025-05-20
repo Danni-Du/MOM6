@@ -141,16 +141,16 @@ contains
             allocate(z_l(ml_config%nk),source=0.0)
             z_l = ml_config%z_l
 
-            !allocate(sa_profile(ml_data%nk),source=0.0)
-            !do zz  = 1, ml_data%nk
-                !p_dbar = gsw_p_from_z(-z_l(zz), ml_data%geoLatT)
-                !sa_profile(zz) = gsw_sa_from_sp(ml_data%S(zz), p_dbar, ml_data%geoLonT, ml_data%geoLatT)
+            allocate(sa_profile(ml_data%nk),source=0.0)
+            do zz  = 1, ml_data%nk
+                p_dbar = gsw_p_from_z(-z_l(zz), ml_data%geoLatT)
+                sa_profile(zz) = gsw_sa_from_sp(ml_data%S(zz), p_dbar, ml_data%geoLonT, ml_data%geoLatT)
                 
-            !end do
+            end do
             !ml_data%S = sa_profile
-            !Smin = MINVAL(sa_profile)
+            Smin = MINVAL(sa_profile)
 
-            Smin = MINVAL(ml_data%S) 
+            !Smin = MINVAL(ml_data%S) 
             
         end if
             
@@ -164,8 +164,9 @@ contains
         else
             allocate(PRHO_profile(ml_data%nk),source=0.0)
             do zz  = 1, ml_data%nk
-                p_dbar = gsw_p_from_z(-z_l(zz), ml_data%geoLatT)
-                SA = gsw_sa_from_sp(ml_data%S(zz), p_dbar, ml_data%geoLonT, ml_data%geoLatT)
+                !p_dbar = gsw_p_from_z(-z_l(zz), ml_data%geoLatT)
+                !SA = gsw_sa_from_sp(ml_data%S(zz), p_dbar, ml_data%geoLonT, ml_data%geoLatT)
+                SA = sa_profile(zz)
                 PT = ml_data%T(zz)
                 CT = gsw_ct_from_pt(SA, PT)
                 PRHO = gsw_sigma0(SA, CT)
