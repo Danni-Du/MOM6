@@ -166,7 +166,8 @@ contains
             do zz  = 1, ml_data%nk
                 !p_dbar = gsw_p_from_z(-z_l(zz), ml_data%geoLatT)
                 !SA = gsw_sa_from_sp(ml_data%S(zz), p_dbar, ml_data%geoLonT, ml_data%geoLatT)
-                SA = sa_profile(zz)
+                !SA = sa_profile(zz)
+                SA = ml_data%S(zz)
                 PT = ml_data%T(zz)
                 CT = gsw_ct_from_pt(SA, PT)
                 PRHO = gsw_sigma0(SA, CT)
