@@ -118,7 +118,7 @@ contains
         real, dimension(8,16) :: decoder_output
         integer :: zz, i, j, idx, k, l
         real :: mask_Tuv
-        real :: Smin, sum_exp
+        real :: Smin, sum_exp, Smin_P
         real :: pi, p_dbar, PSSS
         
         
@@ -150,14 +150,14 @@ contains
             !ml_data%S = sa_profile
             Smin = MINVAL(sa_profile)
 
-            !Smin = MINVAL(ml_data%S) 
+            Smin_P = MINVAL(ml_data%S) 
             
         end if
             
         
         if (mask_Tuv < 5.0) then
             ml_data%T_inc=0.0
-        elseif (Smin < 0.0) then
+        elseif (Smin < 0.0 .or. Smin_P < 0.0) then
             ml_data%T_inc=0.0
         elseif (ml_data%T(1) < -0.054*PSSS) then
             ml_data%T_inc=0.0
