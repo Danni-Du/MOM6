@@ -150,14 +150,14 @@ contains
             !ml_data%S = sa_profile
             Smin = MINVAL(sa_profile)
 
-            Smin_P = MINVAL(ml_data%S) 
+            !Smin_P = MINVAL(ml_data%S) 
             
         end if
             
         
         if (mask_Tuv < 5.0) then
             ml_data%T_inc=0.0
-        elseif (Smin < 0.0 .or. Smin_P < 0.0) then
+        elseif (Smin < 0.0 .or. PSSS < 0.0) then
             ml_data%T_inc=0.0
         elseif (ml_data%T(1) < -0.054*PSSS) then
             ml_data%T_inc=0.0
