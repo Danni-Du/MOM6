@@ -17,20 +17,20 @@ public :: oda_ml_init, oda_ml_end, oda_ml_inference
 ! Data structure to save the ML configuration, input, and output data
 type, public :: ocean_oda_ml_config ; private
     character(len=255)  :: filename
-    real, dimension(32,34)  :: l1_weight
+    real, dimension(32,29)  :: l1_weight
     real, dimension(32,32)  :: l2_weight
     real, dimension(8,32)  :: l3_weight
     real, dimension(32) :: l1_bias, l2_bias, attn_bias1
     real, dimension(8) :: l3_bias
     real, dimension(16) :: e1_bias1, e2_bias1, e3_bias1
     real, dimension(8) :: e1_bias2, e2_bias2, e3_bias2, d_bias2
-    real, dimension(34) :: attn_bias2
+    real, dimension(29) :: attn_bias2
     real, dimension(128) :: d_bias1
     real :: d_bias3
     real, dimension(16,1,3)  :: e1_weight1, e2_weight1, e3_weight1
     real, dimension(8,16,3)  :: e1_weight2, e2_weight2, e3_weight2
-    real, dimension(32,34)  :: attn_weight1
-    real, dimension(34,32)  :: attn_weight2
+    real, dimension(32,29)  :: attn_weight1
+    real, dimension(29,32)  :: attn_weight2
     real, dimension(128,8)  :: d_weight1
     real, dimension(16,8,3)  :: d_weight2
     real, dimension(1,8,3)  :: d_weight3
@@ -106,7 +106,7 @@ contains
         real :: thetao_zgrad_sigma_dist, PRHO_zgrad_sigma_dist, div_sigma_dist, shear2_sigma_dist, coef, so_zgrad_sigma_dist
         real, dimension(:), allocatable :: thetao_zgrad_profile, so_zgrad_profile, div_profile, PRHO_zgrad_profile, uo_zgrad_profile, vo_zgrad_profile
         real, dimension(55) :: ANN_input
-        real, dimension(34) :: ANN_input_final, exp_x, attns
+        real, dimension(29) :: ANN_input_final, exp_x, attns
         real, dimension(8) :: encoder_output
         real, dimension(:), allocatable :: output_DT_at_zl, output_flux_at_zi
         real, dimension(:), allocatable :: z_l
@@ -294,9 +294,9 @@ contains
                         !end if
                     end do
                     
-                    tauamp = sqrt(((ml_data%taux_left+ml_data%taux_right)/2)**2+((ml_data%tauy_south+ml_data%tauy_north)/2)**2)
+                    !tauamp = sqrt(((ml_data%taux_left+ml_data%taux_right)/2)**2+((ml_data%tauy_south+ml_data%tauy_north)/2)**2)
 
-                    ! subroutine(input,DA tendency)
+                    
                     thetao_zgrad_sigma_dist = sqrt(sum(thetao_zgrad_sigma**2))
                     so_zgrad_sigma_dist = sqrt(sum(so_zgrad_sigma**2))
                     !PRHO_zgrad_sigma_dist = sqrt(sum(PRHO_zgrad_sigma**2))
@@ -310,37 +310,37 @@ contains
                     
                     ANN_input(31) = (log10(mld_depth) - 1.0) / 2.5
                     ANN_input(32) = sin(pi / 180.0 * ml_data%geoLatT)
-                    ANN_input(33) = (log10(tauamp+1E-3)+1.2)/0.46
-                    ANN_input(34) = (ml_data%latent+114)/71
-                    ANN_input(35) = (ml_data%sensible+14.4)/24
-                    ANN_input(36) = (ml_data%lw+55)/21
-                    ANN_input(37) = ml_data%sw/400
-                    ANN_input(38:52) = shear2_sigma/shear2_sigma_dist
+                    !ANN_input(33) = (log10(tauamp+1E-3)+1.2)/0.46
+                    !ANN_input(34) = (ml_data%latent+114)/71
+                    !ANN_input(35) = (ml_data%sensible+14.4)/24
+                    !ANN_input(36) = (ml_data%lw+55)/21
+                    !ANN_input(37) = ml_data%sw/400
+                    ANN_input(33:47) = shear2_sigma/shear2_sigma_dist
 
-                    ANN_input(53) = (log10(thetao_zgrad_sigma_dist+1E-3)+0.78)/0.48
-                    !ANN_input(54) = (log10(PRHO_zgrad_sigma_dist+1E-3)+1.32)/0.52
-                    ANN_input(54) = (log10(so_zgrad_sigma_dist+1E-5)+1.84)/0.55
-                    ANN_input(55) = (log10(shear2_sigma_dist+1E-8)+4.17)/0.86
+                    ANN_input(48) = (log10(thetao_zgrad_sigma_dist+1E-3)+0.78)/0.48
+                    !ANN_input(49) = (log10(PRHO_zgrad_sigma_dist+1E-3)+1.32)/0.52
+                    ANN_input(49) = (log10(so_zgrad_sigma_dist+1E-5)+1.84)/0.55
+                    ANN_input(50) = (log10(shear2_sigma_dist+1E-8)+4.17)/0.86
 
-                    ANN_input_final(1:7) = ANN_input(31:37)
-                    ANN_input_final(8:10) = ANN_input(53:55)
+                    ANN_input_final(1:2) = ANN_input(31:32)
+                    ANN_input_final(3:5) = ANN_input(48:50)
                     
                     call cnn_encode(ANN_input(1:15), ml_config%e1_weight1, ml_config%e1_bias1, ml_config%e1_weight2, ml_config%e1_bias2, encoder_output)
-                    ANN_input_final(11:18) = encoder_output
+                    ANN_input_final(6:13) = encoder_output
                     call cnn_encode(ANN_input(16:30), ml_config%e2_weight1, ml_config%e2_bias1, ml_config%e2_weight2, ml_config%e2_bias2, encoder_output)
-                    ANN_input_final(19:26) = encoder_output
-                    call cnn_encode(ANN_input(38:52), ml_config%e3_weight1, ml_config%e3_bias1, ml_config%e3_weight2, ml_config%e3_bias2, encoder_output)
-                    ANN_input_final(27:34) = encoder_output
+                    ANN_input_final(14:21) = encoder_output
+                    call cnn_encode(ANN_input(33:47), ml_config%e3_weight1, ml_config%e3_bias1, ml_config%e3_weight2, ml_config%e3_bias2, encoder_output)
+                    ANN_input_final(22:29) = encoder_output
 
                     attns1 = max(ReLU_zero, matmul(ml_config%attn_weight1, ANN_input_final) + ml_config%attn_bias1)
                     attns = matmul(ml_config%attn_weight2, attns1) + ml_config%attn_bias2
-                    do i = 1, 34
+                    do i = 1, 29
                         exp_x(i) = exp(attns(i))
                     end do
 
                     sum_exp = sum(exp_x)
 
-                    do i = 1, 34
+                    do i = 1, 29
                         attns(i) = exp_x(i) / sum_exp
                     end do
 
@@ -556,9 +556,9 @@ contains
         
         real, dimension(3,1,16)  :: e1_weight1_temp, e2_weight1_temp, e3_weight1_temp
         real, dimension(3,16,8)  :: e1_weight2_temp, e2_weight2_temp, e3_weight2_temp
-        real, dimension(34,32)  :: attn_weight1_temp
-        real, dimension(32,34)  :: attn_weight2_temp
-        real, dimension(34,32)  :: l1_weight_temp
+        real, dimension(29,32)  :: attn_weight1_temp
+        real, dimension(32,29)  :: attn_weight2_temp
+        real, dimension(29,32)  :: l1_weight_temp
         real, dimension(32,32) :: l2_weight_temp
         real, dimension(32,8) :: l3_weight_temp
         real, dimension(8,128) :: d_weight1_temp
