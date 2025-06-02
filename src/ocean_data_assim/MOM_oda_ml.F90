@@ -315,6 +315,9 @@ contains
                     !ANN_input(35) = (ml_data%sensible+14.4)/24
                     !ANN_input(36) = (ml_data%lw+55)/21
                     !ANN_input(37) = ml_data%sw/400
+                    if (shear2_sigma_dist == 0.0) then
+                        shear2_sigma_dist = 1E-8 !just for initialization prep
+                    end if
                     ANN_input(33:47) = shear2_sigma/shear2_sigma_dist
 
                     ANN_input(48) = (log10(thetao_zgrad_sigma_dist+1E-3)+0.78)/0.48
