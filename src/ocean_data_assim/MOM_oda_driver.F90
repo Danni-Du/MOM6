@@ -459,7 +459,7 @@ subroutine init_oda(Time, G, GV, US, CS)
   allocate(CS%T_tend(G%isd:G%ied,G%jsd:G%jed,CS%GV%ke), source=0.0)
   allocate(CS%S_tend(G%isd:G%ied,G%jsd:G%jed,CS%GV%ke), source=0.0)
 
-  if (CS%do_T_bias_adjustment .or. CS%do_S_bias_adjustment) then
+  if (CS%do_T_bias_adjustment .or. CS%do_S_bias_adjustment .or. CS%do_T_ml_bias_adjustment .or. CS%do_S_ml_bias_adjustment) then
     call get_param(PF, mdl, "TEMP_SALT_ADJUSTMENT_FILE", bias_correction_file,  &
                 "The name of the file containing temperature and salinity "//&
                 "tendency adjustments", default='temp_salt_adjustment.nc')
@@ -855,7 +855,7 @@ subroutine oda(Time, CS)
 
     
     if (CS%do_T_ml_bias_adjustment .or. CS%do_S_ml_bias_adjustment) then
-
+      call get_bias_correction_tracer(Time, CS%US, CS)
       call get_ML_bias_correction(Time, CS%US, CS)
 
       if (CS%do_T_ml_bias_adjustment) then
@@ -995,6 +995,7 @@ subroutine get_ML_bias_correction(Time, US, CS)
   do j=jsc,jec ; do i=isc,iec
 
     !! put local variables into ml_data
+    CS%ml_data%T_inc_ota = CS%T_bc_tend(i,j,:)
     CS%ml_data%T = CS%Ocean_background_ave%T(i,j,:)
     CS%ml_data%S = CS%Ocean_background_ave%S(i,j,:)
     CS%ml_data%U_left = CS%Ocean_background_ave%U(i-1,j,:)
