@@ -24,7 +24,7 @@ type, public :: ocean_oda_ml_config ; private
     real, dimension(8) :: l3_bias
     real, dimension(16) :: e1_bias1, e2_bias1, e3_bias1, e4_bias1
     real, dimension(8) :: e1_bias2, e2_bias2, e3_bias2, d_bias2, e4_bias2
-    real, dimension(29) :: attn_bias2
+    real, dimension(38) :: attn_bias2
     real, dimension(128) :: d_bias1
     real :: d_bias3
     real, dimension(16,1,3)  :: e1_weight1, e2_weight1, e3_weight1, e4_weight1
