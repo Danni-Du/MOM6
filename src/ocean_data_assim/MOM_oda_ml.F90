@@ -17,20 +17,20 @@ public :: oda_ml_init, oda_ml_end, oda_ml_inference
 ! Data structure to save the ML configuration, input, and output data
 type, public :: ocean_oda_ml_config ; private
     character(len=255)  :: filename
-    real, dimension(32,29)  :: l1_weight
+    real, dimension(32,38)  :: l1_weight
     real, dimension(32,32)  :: l2_weight
     real, dimension(8,32)  :: l3_weight
     real, dimension(32) :: l1_bias, l2_bias, attn_bias1
     real, dimension(8) :: l3_bias
-    real, dimension(16) :: e1_bias1, e2_bias1, e3_bias1
-    real, dimension(8) :: e1_bias2, e2_bias2, e3_bias2, d_bias2
+    real, dimension(16) :: e1_bias1, e2_bias1, e3_bias1, e4_bias1
+    real, dimension(8) :: e1_bias2, e2_bias2, e3_bias2, d_bias2, e4_bias2
     real, dimension(29) :: attn_bias2
     real, dimension(128) :: d_bias1
     real :: d_bias3
-    real, dimension(16,1,3)  :: e1_weight1, e2_weight1, e3_weight1
-    real, dimension(8,16,3)  :: e1_weight2, e2_weight2, e3_weight2
-    real, dimension(32,29)  :: attn_weight1
-    real, dimension(29,32)  :: attn_weight2
+    real, dimension(16,1,3)  :: e1_weight1, e2_weight1, e3_weight1, e4_weight1
+    real, dimension(8,16,3)  :: e1_weight2, e2_weight2, e3_weight2, e4_weight2
+    real, dimension(32,38)  :: attn_weight1
+    real, dimension(38,32)  :: attn_weight2
     real, dimension(128,8)  :: d_weight1
     real, dimension(16,8,3)  :: d_weight2
     real, dimension(1,8,3)  :: d_weight3
@@ -62,6 +62,7 @@ type, public :: ocean_oda_ml_data
     real, pointer, dimension(:) :: U_right=>NULL() !<layer zonal velocity (m s-1) across ensembles
     real, pointer, dimension(:) :: V_north=>NULL() !<layer meridional velocity (m s-1) across ensembles
     real, pointer, dimension(:) :: V_south=>NULL() !<layer meridional velocity (m s-1) across ensembles
+    real, pointer, dimension(:) :: T_inc_ota=>NULL()
 
     !! Output predictions
     real, pointer, dimension(:) :: T_inc=>NULL()
@@ -102,11 +103,11 @@ contains
         real :: thetao, so, uo_left, uo_right, vo_south, vo_north, div, thetao_top, thetao_bottom, so_top,so_bottom
         real :: PRHO_top, PRHO_bottom, uo_right_top, uo_right_bottom, uo_left_top, uo_left_bottom
         real :: vo_north_top, vo_north_bottom, vo_south_top, vo_south_bottom
-        real, dimension(15) :: thetao_zgrad_sigma, so_zgrad_sigma, PRHO_zgrad_sigma, div_sigma, output_DT_sigmas, uo_zgrad_sigma, vo_zgrad_sigma, shear2_sigma
-        real :: thetao_zgrad_sigma_dist, PRHO_zgrad_sigma_dist, div_sigma_dist, shear2_sigma_dist, coef, so_zgrad_sigma_dist
-        real, dimension(:), allocatable :: thetao_zgrad_profile, so_zgrad_profile, div_profile, PRHO_zgrad_profile, uo_zgrad_profile, vo_zgrad_profile
-        real, dimension(55) :: ANN_input
-        real, dimension(29) :: ANN_input_final, exp_x, attns
+        real, dimension(15) :: thetao_zgrad_sigma, so_zgrad_sigma, PRHO_zgrad_sigma, div_sigma, output_DT_sigmas, uo_zgrad_sigma, vo_zgrad_sigma, shear2_sigma, ota_dt_sigma
+        real :: thetao_zgrad_sigma_dist, PRHO_zgrad_sigma_dist, div_sigma_dist, shear2_sigma_dist, coef, so_zgrad_sigma_dist, ota_dt_sigma_dist
+        real, dimension(:), allocatable :: thetao_zgrad_profile, so_zgrad_profile, div_profile, PRHO_zgrad_profile, uo_zgrad_profile, vo_zgrad_profile, ota_dt_profile
+        real, dimension(66) :: ANN_input
+        real, dimension(38) :: ANN_input_final, exp_x, attns
         real, dimension(8) :: encoder_output
         real, dimension(:), allocatable :: output_DT_at_zl, output_flux_at_zi
         real, dimension(:), allocatable :: z_l
@@ -222,6 +223,7 @@ contains
                     !allocate(PRHO_zgrad_profile(zl_index_3mld),source=0.0)
                     allocate(uo_zgrad_profile(zl_index_3mld),source=0.0)
                     allocate(vo_zgrad_profile(zl_index_3mld),source=0.0)
+                    allocate(ota_dt_profile(zl_index_3mld),source=0.0)
 
                     do zz = 1, zl_index_3mld
                         thetao_top = ml_data%T(zz)
@@ -249,6 +251,8 @@ contains
                         !PRHO_zgrad_profile(zz) = (PRHO_top - PRHO_bottom)/(z_l(zz+1) - z_l(zz))
                         uo_zgrad_profile(zz) = (uo_right_top-uo_right_bottom+uo_left_top-uo_left_bottom)/(2*(z_l(zz+1) - z_l(zz)))
                         vo_zgrad_profile(zz) = (vo_north_top-vo_north_bottom+vo_south_top-vo_south_bottom)/(2*(z_l(zz+1) - z_l(zz)))
+
+                        ota_dt_profile(zz) = ml_data%T_inc_ota(zz)
                     end do
 
                     zl_to_sigma = z_l(1:zl_index_3mld)/mld_depth
@@ -286,12 +290,12 @@ contains
                                     vo_zgrad_profile(right_index),target_sigmas(i),vo_zgrad_sigma(i))
                         end if
 
-                        !call find_right_index_clean(zl_to_sigma, target_sigmas(i), right_index)
-                        !if (right_index == 1) then
-                            !div_sigma(i) = div_profile(1)
-                        !else
-                            !call interpolate(zl_to_sigma(right_index-1),zl_to_sigma(right_index),div_profile(right_index-1),div_profile(right_index),target_sigmas(i),div_sigma(i))
-                        !end if
+                        call find_right_index_clean(zl_to_sigma, target_sigmas(i), right_index)
+                        if (right_index == 1) then
+                            ota_dt_sigma(i) = ota_dt_profile(1)
+                        else
+                            call interpolate(zl_to_sigma(right_index-1),zl_to_sigma(right_index),ota_dt_profile(right_index-1),ota_dt_profile(right_index),target_sigmas(i),ota_dt_sigma(i))
+                        end if
                     end do
                     
                     !tauamp = sqrt(((ml_data%taux_left+ml_data%taux_right)/2)**2+((ml_data%tauy_south+ml_data%tauy_north)/2)**2)
@@ -299,51 +303,48 @@ contains
                     
                     thetao_zgrad_sigma_dist = sqrt(sum(thetao_zgrad_sigma**2))
                     so_zgrad_sigma_dist = sqrt(sum(so_zgrad_sigma**2))
-                    !PRHO_zgrad_sigma_dist = sqrt(sum(PRHO_zgrad_sigma**2))
-                    !div_sigma_dist = sqrt(sum(div_sigma**2))
                     shear2_sigma = uo_zgrad_sigma**2 + vo_zgrad_sigma**2
                     shear2_sigma_dist = sqrt(sum(shear2_sigma**2))
+                    ota_dt_sigma_dist = sqrt(sum(ota_dt_sigma**2))
                     
                     ANN_input(1:15) = thetao_zgrad_sigma/thetao_zgrad_sigma_dist
-                    !ANN_input(16:30) = PRHO_zgrad_sigma/PRHO_zgrad_sigma_dist
                     ANN_input(16:30) = so_zgrad_sigma/so_zgrad_sigma_dist
                     
                     ANN_input(31) = (log10(mld_depth) - 1.0) / 2.5
                     ANN_input(32) = sin(pi / 180.0 * ml_data%geoLatT)
-                    !ANN_input(33) = (log10(tauamp+1E-3)+1.2)/0.46
-                    !ANN_input(34) = (ml_data%latent+114)/71
-                    !ANN_input(35) = (ml_data%sensible+14.4)/24
-                    !ANN_input(36) = (ml_data%lw+55)/21
-                    !ANN_input(37) = ml_data%sw/400
+                    
                     if (shear2_sigma_dist == 0.0) then
                         shear2_sigma_dist = 1E-8 !just for initialization prep
                     end if
                     ANN_input(33:47) = shear2_sigma/shear2_sigma_dist
+                    ANN_input(48:62) = ota_dt_sigma/ota_dt_sigma_dist
 
-                    ANN_input(48) = (log10(thetao_zgrad_sigma_dist+1E-3)+0.78)/0.48
-                    !ANN_input(49) = (log10(PRHO_zgrad_sigma_dist+1E-3)+1.32)/0.52
-                    ANN_input(49) = (log10(so_zgrad_sigma_dist+1E-5)+1.84)/0.55
-                    ANN_input(50) = (log10(shear2_sigma_dist+1E-8)+4.17)/0.86
+                    ANN_input(63) = (log10(thetao_zgrad_sigma_dist+1E-3)+0.78)/0.48
+                    ANN_input(64) = (log10(so_zgrad_sigma_dist+1E-5)+1.84)/0.55
+                    ANN_input(65) = (log10(shear2_sigma_dist+1E-8)+4.17)/0.86
+                    ANN_input(66) = (log10(ota_dt_sigma_dist+1E-8)+6.33)/0.4
 
                     ANN_input_final(1:2) = ANN_input(31:32)
-                    ANN_input_final(3:5) = ANN_input(48:50)
+                    ANN_input_final(3:6) = ANN_input(63:66)
                     
                     call cnn_encode(ANN_input(1:15), ml_config%e1_weight1, ml_config%e1_bias1, ml_config%e1_weight2, ml_config%e1_bias2, encoder_output)
-                    ANN_input_final(6:13) = encoder_output
+                    ANN_input_final(7:14) = encoder_output
                     call cnn_encode(ANN_input(16:30), ml_config%e2_weight1, ml_config%e2_bias1, ml_config%e2_weight2, ml_config%e2_bias2, encoder_output)
-                    ANN_input_final(14:21) = encoder_output
+                    ANN_input_final(15:22) = encoder_output
                     call cnn_encode(ANN_input(33:47), ml_config%e3_weight1, ml_config%e3_bias1, ml_config%e3_weight2, ml_config%e3_bias2, encoder_output)
-                    ANN_input_final(22:29) = encoder_output
+                    ANN_input_final(23:30) = encoder_output
+                    call cnn_encode(ANN_input(48:62), ml_config%e4_weight1, ml_config%e4_bias1, ml_config%e4_weight2, ml_config%e4_bias2, encoder_output)
+                    ANN_input_final(31:38) = encoder_output
 
                     attns1 = max(ReLU_zero, matmul(ml_config%attn_weight1, ANN_input_final) + ml_config%attn_bias1)
                     attns = matmul(ml_config%attn_weight2, attns1) + ml_config%attn_bias2
-                    do i = 1, 29
+                    do i = 1, 38
                         exp_x(i) = exp(attns(i))
                     end do
 
                     sum_exp = sum(exp_x)
 
-                    do i = 1, 29
+                    do i = 1, 38
                         attns(i) = exp_x(i) / sum_exp
                     end do
 
@@ -461,7 +462,7 @@ contains
         allocate(ml_data%U_right(nk),source=0.0)
         allocate(ml_data%V_north(nk),source=0.0)
         allocate(ml_data%V_south(nk),source=0.0)
-        
+        allocate(ml_data%T_inc_ota(nk),source=0.0)
 
         allocate(ml_data%T_inc(nk),source=0.0)
         allocate(ml_data%S_inc(nk),source=0.0)
@@ -557,11 +558,11 @@ contains
         type(ocean_oda_ml_config), pointer, intent(inout) :: ml_config
 
         
-        real, dimension(3,1,16)  :: e1_weight1_temp, e2_weight1_temp, e3_weight1_temp
-        real, dimension(3,16,8)  :: e1_weight2_temp, e2_weight2_temp, e3_weight2_temp
-        real, dimension(29,32)  :: attn_weight1_temp
-        real, dimension(32,29)  :: attn_weight2_temp
-        real, dimension(29,32)  :: l1_weight_temp
+        real, dimension(3,1,16)  :: e1_weight1_temp, e2_weight1_temp, e3_weight1_temp, e4_weight1_temp
+        real, dimension(3,16,8)  :: e1_weight2_temp, e2_weight2_temp, e3_weight2_temp, e4_weight2_temp
+        real, dimension(38,32)  :: attn_weight1_temp
+        real, dimension(32,38)  :: attn_weight2_temp
+        real, dimension(38,32)  :: l1_weight_temp
         real, dimension(32,32) :: l2_weight_temp
         real, dimension(32,8) :: l3_weight_temp
         real, dimension(8,128) :: d_weight1_temp
@@ -609,6 +610,15 @@ contains
             end do
         end do
 
+        varname = 'e4_weight1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e4_weight1_temp)
+        do i = 1, 3
+            do k = 1, 16
+                ml_config%e4_weight1(k, 1, i) = e4_weight1_temp(i, 1, k)
+            end do
+        end do
+
         varname = 'e1_weight2'
         retval = nf90_inq_varid(ncid, varname, varid)
         retval = nf90_get_var(ncid, varid, e1_weight2_temp)
@@ -638,6 +648,17 @@ contains
             do j = 1, 16
                 do k = 1, 8
                     ml_config%e3_weight2(k, j, i) = e3_weight2_temp(i, j, k)
+                end do
+            end do
+        end do
+
+        varname = 'e4_weight2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e4_weight2_temp)
+        do i = 1, 3
+            do j = 1, 16
+                do k = 1, 8
+                    ml_config%e4_weight2(k, j, i) = e4_weight2_temp(i, j, k)
                 end do
             end do
         end do
@@ -727,6 +748,13 @@ contains
         varname = 'e3_bias2'
         retval = nf90_inq_varid(ncid, varname, varid)
         retval = nf90_get_var(ncid, varid, ml_config%e3_bias2)
+
+        varname = 'e4_bias1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e4_bias1)
+        varname = 'e4_bias2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e4_bias2)
 
         varname = 'attn_bias1'
         retval = nf90_inq_varid(ncid, varname, varid)
