@@ -873,7 +873,9 @@ subroutine oda(Time, CS)
     endif
 
     if (CS%do_T_bias_adjustment .or. CS%do_S_bias_adjustment) then
-      call get_bias_correction_tracer(Time, CS%US, CS)
+      if (.not. (CS%do_T_ml_bias_adjustment .or. CS%do_S_ml_bias_adjustment)) then
+        call get_bias_correction_tracer(Time, CS%US, CS)
+      endif
       if (CS%do_T_bias_adjustment) then
         CS%Ocean_background_ave%T(isc:iec,jsc:jec,:) = CS%Ocean_background_ave%T(isc:iec,jsc:jec,:) + &
           CS%T_bc_tend(isc:iec,jsc:jec,:) * CS%assim_interval
