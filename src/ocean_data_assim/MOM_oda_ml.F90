@@ -319,97 +319,103 @@ contains
                         shear2_sigma_dist = 1E-8 !just for initialization prep
                     end if
                     ANN_input(33:47) = shear2_sigma/shear2_sigma_dist
-                    ANN_input(48:62) = ota_dt_sigma/ota_dt_sigma_dist
+                    if (ota_dt_sigma_dist == 0.0) then
+                        ml_data%T_inc = 0.0
+                    else
+                        ANN_input(48:62) = ota_dt_sigma/ota_dt_sigma_dist
 
-                    ANN_input(63) = (log10(thetao_zgrad_sigma_dist+1E-3)+0.78)/0.48
-                    ANN_input(64) = (log10(so_zgrad_sigma_dist+1E-5)+1.84)/0.55
-                    ANN_input(65) = (log10(shear2_sigma_dist+1E-8)+4.17)/0.86
-                    ANN_input(66) = (log10(ota_dt_sigma_dist+1E-8)+6.33)/0.4
-
-                    ANN_input_final(1:2) = ANN_input(31:32)
-                    ANN_input_final(3:6) = ANN_input(63:66)
                     
-                    call cnn_encode(ANN_input(1:15), ml_config%e1_weight1, ml_config%e1_bias1, ml_config%e1_weight2, ml_config%e1_bias2, encoder_output)
-                    ANN_input_final(7:14) = encoder_output
-                    call cnn_encode(ANN_input(16:30), ml_config%e2_weight1, ml_config%e2_bias1, ml_config%e2_weight2, ml_config%e2_bias2, encoder_output)
-                    ANN_input_final(15:22) = encoder_output
-                    call cnn_encode(ANN_input(33:47), ml_config%e3_weight1, ml_config%e3_bias1, ml_config%e3_weight2, ml_config%e3_bias2, encoder_output)
-                    ANN_input_final(23:30) = encoder_output
-                    call cnn_encode(ANN_input(48:62), ml_config%e4_weight1, ml_config%e4_bias1, ml_config%e4_weight2, ml_config%e4_bias2, encoder_output)
-                    ANN_input_final(31:38) = encoder_output
 
-                    attns1 = max(ReLU_zero, matmul(ml_config%attn_weight1, ANN_input_final) + ml_config%attn_bias1)
-                    attns = matmul(ml_config%attn_weight2, attns1) + ml_config%attn_bias2
-                    do i = 1, 38
-                        exp_x(i) = exp(attns(i))
-                    end do
+                        ANN_input(63) = (log10(thetao_zgrad_sigma_dist+1E-3)+0.78)/0.48
+                        ANN_input(64) = (log10(so_zgrad_sigma_dist+1E-5)+1.84)/0.55
+                        ANN_input(65) = (log10(shear2_sigma_dist+1E-8)+4.17)/0.86
+                        ANN_input(66) = (log10(ota_dt_sigma_dist+1E-8)+6.33)/0.4
 
-                    sum_exp = sum(exp_x)
-
-                    do i = 1, 38
-                        attns(i) = exp_x(i) / sum_exp
-                    end do
-
-                    ANN_input_final = ANN_input_final*attns
-
-                    l1_output = max(ReLU_zero, matmul(ml_config%l1_weight, ANN_input_final) + ml_config%l1_bias)
-                    l2_output = max(ReLU_zero, matmul(ml_config%l2_weight, l1_output) + ml_config%l2_bias)
-                    l3_output = matmul(ml_config%l3_weight, l2_output) + ml_config%l3_bias
+                        ANN_input_final(1:2) = ANN_input(31:32)
+                        ANN_input_final(3:6) = ANN_input(63:66)
                     
-                    ! l3_output is the latent output
+                        call cnn_encode(ANN_input(1:15), ml_config%e1_weight1, ml_config%e1_bias1, ml_config%e1_weight2, ml_config%e1_bias2, encoder_output)
+                        ANN_input_final(7:14) = encoder_output
+                        call cnn_encode(ANN_input(16:30), ml_config%e2_weight1, ml_config%e2_bias1, ml_config%e2_weight2, ml_config%e2_bias2, encoder_output)
+                        ANN_input_final(15:22) = encoder_output
+                        call cnn_encode(ANN_input(33:47), ml_config%e3_weight1, ml_config%e3_bias1, ml_config%e3_weight2, ml_config%e3_bias2, encoder_output)
+                        ANN_input_final(23:30) = encoder_output
+                        call cnn_encode(ANN_input(48:62), ml_config%e4_weight1, ml_config%e4_bias1, ml_config%e4_weight2, ml_config%e4_bias2, encoder_output)
+                        ANN_input_final(31:38) = encoder_output
 
-                    !decoder: from l3_output to flux_output
-                    d_output1 = max(ReLU_zero, matmul(ml_config%d_weight1, l3_output) + ml_config%d_bias1)
-                    idx = 1
-                    do i = 1, 16       ! rows
-                        do j = 1, 8     ! columns
-                            d_output1_reshaped(i, j) = d_output1(idx)
-                            idx = idx + 1
+                        attns1 = max(ReLU_zero, matmul(ml_config%attn_weight1, ANN_input_final) + ml_config%attn_bias1)
+                        attns = matmul(ml_config%attn_weight2, attns1) + ml_config%attn_bias2
+                        do i = 1, 38
+                            exp_x(i) = exp(attns(i))
                         end do
-                    end do
-                    call transposed_conv1d(d_output1_reshaped, ml_config%d_weight2, ml_config%d_bias2, decoder_output)
-                    do i = 1, 8       ! rows
-                        do j = 1, 16     ! columns
-                            if (decoder_output(i,j) < 0.0) decoder_output(i,j) = 0.0
+
+                        sum_exp = sum(exp_x)
+
+                        do i = 1, 38
+                            attns(i) = exp_x(i) / sum_exp
                         end do
-                    end do
-                    ! Final conv1d channels (8 to 1)
+
+                        ANN_input_final = ANN_input_final*attns
+
+                        l1_output = max(ReLU_zero, matmul(ml_config%l1_weight, ANN_input_final) + ml_config%l1_bias)
+                        l2_output = max(ReLU_zero, matmul(ml_config%l2_weight, l1_output) + ml_config%l2_bias)
+                        l3_output = matmul(ml_config%l3_weight, l2_output) + ml_config%l3_bias
+                    
+                        ! l3_output is the latent output
+
+                        !decoder: from l3_output to flux_output
+                        d_output1 = max(ReLU_zero, matmul(ml_config%d_weight1, l3_output) + ml_config%d_bias1)
+                        idx = 1
+                        do i = 1, 16       ! rows
+                            do j = 1, 8     ! columns
+                                d_output1_reshaped(i, j) = d_output1(idx)
+                                idx = idx + 1
+                            end do
+                        end do
+                        call transposed_conv1d(d_output1_reshaped, ml_config%d_weight2, ml_config%d_bias2, decoder_output)
+                        do i = 1, 8       ! rows
+                            do j = 1, 16     ! columns
+                                if (decoder_output(i,j) < 0.0) decoder_output(i,j) = 0.0
+                            end do
+                        end do
+                        ! Final conv1d channels (8 to 1)
                    
                     
-                    do j = 1, 16
-                        flux_output(j) = ml_config%d_bias3
-                        do k = 1, 8
-                            do l = -1,1
-                            if (j+l >= 1 .and. j+l <= 16) then
-                                flux_output(j) = flux_output(j) + ml_config%d_weight3(1,k,l+2)*decoder_output(k,j+l)
-                            endif
+                        do j = 1, 16
+                            flux_output(j) = ml_config%d_bias3
+                            do k = 1, 8
+                                do l = -1,1
+                                if (j+l >= 1 .and. j+l <= 16) then
+                                    flux_output(j) = flux_output(j) + ml_config%d_weight3(1,k,l+2)*decoder_output(k,j+l)
+                                endif
+                                enddo
                             enddo
                         enddo
-                    enddo
                 
                    
 
-                    coef = thetao_zgrad_sigma_dist*0.01*(mld_depth**2)*(shear2_sigma_dist**0.5)
-                    flux_output = flux_output * coef
+                        coef = thetao_zgrad_sigma_dist*0.01*(mld_depth**2)*(shear2_sigma_dist**0.5)
+                        flux_output = flux_output * coef
         
-                    output_DT_sigmas =  (flux_output(1:15)-flux_output(2:16))/(0.2*mld_depth)/1000
+                        output_DT_sigmas =  (flux_output(1:15)-flux_output(2:16))/(0.2*mld_depth)/1000
                     
                     
                 
-                    allocate(output_DT_at_zl(zl_index_3mld))
-                    do zz = 1, zl_index_3mld
-                        call find_right_index_clean(target_sigmas, zl_to_sigma(zz), right_index)
-                        if (right_index == 0) then
-                            output_DT_at_zl(zz) = 0.0
-                        else if (right_index == 1) then
-                            output_DT_at_zl(zz) = output_DT_sigmas(1)
-                        else
-                            call interpolate(target_sigmas(right_index-1),target_sigmas(right_index),output_DT_sigmas(right_index-1),&
+                        allocate(output_DT_at_zl(zl_index_3mld))
+                        do zz = 1, zl_index_3mld
+                            call find_right_index_clean(target_sigmas, zl_to_sigma(zz), right_index)
+                            if (right_index == 0) then
+                                output_DT_at_zl(zz) = 0.0
+                            else if (right_index == 1) then
+                                output_DT_at_zl(zz) = output_DT_sigmas(1)
+                            else
+                                call interpolate(target_sigmas(right_index-1),target_sigmas(right_index),output_DT_sigmas(right_index-1),&
                                     output_DT_sigmas(right_index),zl_to_sigma(zz),output_DT_at_zl(zz))
-                        end if
-                    end do
+                            end if
+                        end do
 
-                    ml_data%T_inc(1:zl_index_3mld) = output_DT_at_zl
+                        ml_data%T_inc(1:zl_index_3mld) = output_DT_at_zl
+                    endif
 
                     
                     
