@@ -1039,10 +1039,13 @@ subroutine get_ML_bias_correction(Time, US, CS)
     
 
     !! Call inference subroutine with the concatenated vector
-    call oda_ml_inference(CS%ml_config, CS%ml_data)
+    !call oda_ml_inference(CS%ml_config, CS%ml_data)
 
-    CS%T_ml_tend(i,j,:) = CS%ml_data%T_inc * CS%T_ml_bias_adjustment_multiplier
-    CS%S_ml_tend(i,j,:) = CS%ml_data%S_inc * CS%S_ml_bias_adjustment_multiplier
+    !CS%T_ml_tend(i,j,:) = CS%ml_data%T_inc * CS%T_ml_bias_adjustment_multiplier
+    !CS%S_ml_tend(i,j,:) = CS%ml_data%S_inc * CS%S_ml_bias_adjustment_multiplier
+
+    CS%T_ml_tend(i,j,:) = CS%ml_data%T_inc_ota * CS%T_ml_bias_adjustment_multiplier
+    CS%S_ml_tend(i,j,:) = 0.0
 
     do k=1,CS%nk
       if (CS%T_ml_tend(i,j,k) > 1.0E-5*US%degC_to_C) CS%T_ml_tend(i,j,k) = 1.0E-5
