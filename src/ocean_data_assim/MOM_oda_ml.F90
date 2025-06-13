@@ -162,6 +162,8 @@ contains
             ml_data%T_inc=0.0
         elseif (ml_data%T(1) < -0.054*PSSS) then
             ml_data%T_inc=0.0
+        elseif (ml_data%T_inc_ota(1) == 0.0) then
+            ml_data%T_inc=0.0
         else
             allocate(PRHO_profile(ml_data%nk),source=0.0)
             do zz  = 1, ml_data%nk
