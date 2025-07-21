@@ -472,6 +472,14 @@ contains
         allocate(ml_data%U_right(nk),source=0.0)
         allocate(ml_data%V_north(nk),source=0.0)
         allocate(ml_data%V_south(nk),source=0.0)
+        allocate(ml_data%T_left(nk),source=0.0)
+        allocate(ml_data%T_right(nk),source=0.0)
+        allocate(ml_data%T_south(nk),source=0.0)
+        allocate(ml_data%T_north(nk),source=0.0)
+        allocate(ml_data%S_left(nk),source=0.0)
+        allocate(ml_data%S_right(nk),source=0.0)
+        allocate(ml_data%S_south(nk),source=0.0)
+        allocate(ml_data%S_north(nk),source=0.0)
         
 
         allocate(ml_data%T_inc(nk),source=0.0)
