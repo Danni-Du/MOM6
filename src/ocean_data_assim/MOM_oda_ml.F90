@@ -105,8 +105,8 @@ contains
         real, dimension(15) :: thetao_zgrad_sigma, so_zgrad_sigma, PRHO_zgrad_sigma, div_sigma, output_DT_sigmas, uo_zgrad_sigma, vo_zgrad_sigma, shear2_sigma
         real :: thetao_zgrad_sigma_dist, PRHO_zgrad_sigma_dist, div_sigma_dist, shear2_sigma_dist, coef, so_zgrad_sigma_dist
         real, dimension(:), allocatable :: thetao_zgrad_profile, so_zgrad_profile, div_profile, PRHO_zgrad_profile, uo_zgrad_profile, vo_zgrad_profile
-        real, dimension(55) :: ANN_input
-        real, dimension(29) :: ANN_input_final, exp_x, attns
+        real, dimension(66) :: ANN_input
+        real, dimension(38) :: ANN_input_final, exp_x, attns
         real, dimension(8) :: encoder_output
         real, dimension(:), allocatable :: output_DT_at_zl, output_flux_at_zi
         real, dimension(:), allocatable :: z_l
@@ -337,13 +337,13 @@ contains
 
                     attns1 = max(ReLU_zero, matmul(ml_config%attn_weight1, ANN_input_final) + ml_config%attn_bias1)
                     attns = matmul(ml_config%attn_weight2, attns1) + ml_config%attn_bias2
-                    do i = 1, 29
+                    do i = 1, 38
                         exp_x(i) = exp(attns(i))
                     end do
 
                     sum_exp = sum(exp_x)
 
-                    do i = 1, 29
+                    do i = 1, 38
                         attns(i) = exp_x(i) / sum_exp
                     end do
 
@@ -559,9 +559,9 @@ contains
         
         real, dimension(3,1,16)  :: e1_weight1_temp, e2_weight1_temp, e3_weight1_temp
         real, dimension(3,16,8)  :: e1_weight2_temp, e2_weight2_temp, e3_weight2_temp
-        real, dimension(29,32)  :: attn_weight1_temp
-        real, dimension(32,29)  :: attn_weight2_temp
-        real, dimension(29,32)  :: l1_weight_temp
+        real, dimension(38,32)  :: attn_weight1_temp
+        real, dimension(32,38)  :: attn_weight2_temp
+        real, dimension(38,32)  :: l1_weight_temp
         real, dimension(32,32) :: l2_weight_temp
         real, dimension(32,8) :: l3_weight_temp
         real, dimension(8,128) :: d_weight1_temp
