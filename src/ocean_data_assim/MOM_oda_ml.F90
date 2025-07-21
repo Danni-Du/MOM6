@@ -43,25 +43,36 @@ end type ocean_oda_ml_config
 
 type, public :: ocean_oda_ml_data
     integer :: nk
-    real :: dyCu_left, dyCu_right, dxCv_south, dxCv_north, areacello
+    !real :: dyCu_left, dyCu_right, dxCv_south, dxCv_north, areacello
+    real :: dxCu_left, dxCu_right, dyCv_north, dyCv_south
     real :: bathyT, bathyU_left, bathyU_right, bathyV_south, bathyV_north
+    real, dimension(3,3) :: all_bathy
     real :: mask2dT, OBCmaskCu_left, OBCmaskCu_right, OBCmaskCv_south, OBCmaskCv_north 
+    real :: mask2dT_left, mask2dT_right, mask2dT_north, mask2dT_south
     !! Input features
-    real :: SSH !<sea surface height (m) across ensembles
-    real :: taux_left !<zonal wind stress
-    real :: taux_right !<zonal wind stress
-    real :: tauy_north !<meridional wind stress
-    real :: tauy_south !<zonal wind stress
-    real :: latent !<latent heat flux
-    real :: sensible !<sensile heat flux
-    real :: lw !<longwave radiation flux
-    real :: sw !<shortwave radiation flux
+    !real :: SSH !<sea surface height (m) across ensembles
+    !real :: taux_left !<zonal wind stress
+    !real :: taux_right !<zonal wind stress
+    !real :: tauy_north !<meridional wind stress
+    !real :: tauy_south !<zonal wind stress
+    !real :: latent !<latent heat flux
+    !real :: sensible !<sensile heat flux
+    !real :: lw !<longwave radiation flux
+    !real :: sw !<shortwave radiation flux
     real, pointer, dimension(:) :: T=>NULL() !<layer potential temperature (degC) across ensembles
     real, pointer, dimension(:) :: S=>NULL() !<layer salinity (psu or g kg-1) across ensembles
     real, pointer, dimension(:) :: U_left=>NULL() !<layer zonal velocity (m s-1) across ensembles
     real, pointer, dimension(:) :: U_right=>NULL() !<layer zonal velocity (m s-1) across ensembles
     real, pointer, dimension(:) :: V_north=>NULL() !<layer meridional velocity (m s-1) across ensembles
     real, pointer, dimension(:) :: V_south=>NULL() !<layer meridional velocity (m s-1) across ensembles
+    real, pointer, dimension(:) :: T_left=>NULL() !<layer potential temperature (degC) across ensembles
+    real, pointer, dimension(:) :: T_right=>NULL() !<layer potential temperature (degC) across ensembles
+    real, pointer, dimension(:) :: T_south=>NULL() !<layer potential temperature (degC) across ensembles
+    real, pointer, dimension(:) :: T_north=>NULL() !<layer potential temperature (degC) across ensembles
+    real, pointer, dimension(:) :: S_left=>NULL() !<layer salinity (psu or g kg-1) across ensembles
+    real, pointer, dimension(:) :: S_right=>NULL() !<layer salinity (psu or g kg-1) across ensembles
+    real, pointer, dimension(:) :: S_south=>NULL() !<layer salinity (psu or g kg-1) across ensembles
+    real, pointer, dimension(:) :: S_north=>NULL() !<layer salinity (psu or g kg-1) across ensembles
 
     !! Output predictions
     real, pointer, dimension(:) :: T_inc=>NULL()
