@@ -45,7 +45,8 @@ type, public :: ocean_oda_ml_data
     integer :: nk
     !real :: dyCu_left, dyCu_right, dxCv_south, dxCv_north, areacello
     real :: dxCu_left, dxCu_right, dyCv_north, dyCv_south
-    real :: bathyT, bathyU_left, bathyU_right, bathyV_south, bathyV_north
+    real :: bathyT
+    !real :: bathyU_left, bathyU_right, bathyV_south, bathyV_north
     real, dimension(3,3) :: all_bathy
     real :: mask2dT, OBCmaskCu_left, OBCmaskCu_right, OBCmaskCv_south, OBCmaskCv_north 
     real :: mask2dT_left, mask2dT_right, mask2dT_north, mask2dT_south
