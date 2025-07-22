@@ -22,13 +22,13 @@ type, public :: ocean_oda_ml_config ; private
     real, dimension(8,32)  :: l3_weight
     real, dimension(32) :: l1_bias, l2_bias, attn_bias1
     real, dimension(8) :: l3_bias
-    real, dimension(16) :: e1_bias1, e2_bias1, e3_bias1
-    real, dimension(8) :: e1_bias2, e2_bias2, e3_bias2, d_bias2
+    real, dimension(16) :: e1_bias1, e2_bias1, e3_bias1, e4_bias1
+    real, dimension(8) :: e1_bias2, e2_bias2, e3_bias2, e4_bias2, d_bias2
     real, dimension(38) :: attn_bias2
     real, dimension(128) :: d_bias1
     real :: d_bias3
-    real, dimension(16,1,3)  :: e1_weight1, e2_weight1, e3_weight1
-    real, dimension(8,16,3)  :: e1_weight2, e2_weight2, e3_weight2
+    real, dimension(16,1,3)  :: e1_weight1, e2_weight1, e3_weight1, e4_weight1
+    real, dimension(8,16,3)  :: e1_weight2, e2_weight2, e3_weight2, e4_weight2
     real, dimension(32,38)  :: attn_weight1
     real, dimension(38,32)  :: attn_weight2
     real, dimension(128,8)  :: d_weight1
@@ -77,7 +77,9 @@ type, public :: ocean_oda_ml_data
     !! Output predictions
     real, pointer, dimension(:) :: T_inc=>NULL()
     real, pointer, dimension(:) :: S_inc=>NULL()
-    real :: geoLatT, geoLonT
+    real :: geoLatT, geoLonT, geoLatT_left, geoLatT_right, geoLatT_south, geoLatT_north
+    real :: geoLonT_left, geoLonT_right, geoLonT_south, geoLonT_north
+   
 
 
 end type ocean_oda_ml_data
@@ -87,7 +89,7 @@ real :: reference_depth = 10
 real :: ReLU_zero = 0
 real, dimension(15) :: target_sigmas = (/0.1,0.3,0.5,0.7,0.9,1.1,1.3,1.5,1.7,1.9,2.1,2.3,2.5,2.7,2.9/)
 real, dimension(16) :: output_flux_sigmas = (/0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4, 2.6, 2.8, 3.0/)
-character(len=255)  :: danni_ANN_name = '/gpfs/f5/gfdl_sd/world-shared/Danni.Du/ECDA_data/ML/M8/M8_Sfixed_no_atoms_ens_attention_encoder_decoder_2003_2014_60epoch_L1.nc'
+character(len=255)  :: danni_ANN_name = '/gpfs/f5/gfdl_sd/world-shared/Danni.Du/ECDA_data/ML/M8/M8_Sfixed_no_atoms_more_ens_attention_encoder_decoder_2014_10epoch_L1.nc'
 real :: seconds_in_30_days = 3600*24*30
 
 integer :: id_clock_ml_remapping
@@ -105,7 +107,9 @@ contains
         type(ocean_oda_ml_data), pointer, intent(inout) :: ml_data
         
         real :: SA, PT, CT, PRHO ,tauamp, rho0
+        real :: PRHO_left, PRHO_right, PRHO_north, PRHO_south
         real, dimension(:), allocatable :: PRHO_profile, sa_profile
+        real, dimension(:), allocatable :: PRHO_xgrad_profile, PRHO_ygrad_profile
         real :: PRHO_mld, PRHO_10m 
         real :: mld_depth
         integer :: zl_index_mld, zl_index10m, zl_index_3mld, right_index
@@ -114,7 +118,8 @@ contains
         real :: PRHO_top, PRHO_bottom, uo_right_top, uo_right_bottom, uo_left_top, uo_left_bottom
         real :: vo_north_top, vo_north_bottom, vo_south_top, vo_south_bottom
         real, dimension(15) :: thetao_zgrad_sigma, so_zgrad_sigma, PRHO_zgrad_sigma, div_sigma, output_DT_sigmas, uo_zgrad_sigma, vo_zgrad_sigma, shear2_sigma
-        real :: thetao_zgrad_sigma_dist, PRHO_zgrad_sigma_dist, div_sigma_dist, shear2_sigma_dist, coef, so_zgrad_sigma_dist
+        real, dimension(15) :: Bh_sigma, PRHO_xgrad_sigma, PRHO_ygrad_sigma
+        real :: thetao_zgrad_sigma_dist, PRHO_zgrad_sigma_dist, div_sigma_dist, shear2_sigma_dist, coef, so_zgrad_sigma_dist, Bh_sigma_dist
         real, dimension(:), allocatable :: thetao_zgrad_profile, so_zgrad_profile, div_profile, PRHO_zgrad_profile, uo_zgrad_profile, vo_zgrad_profile
         real, dimension(66) :: ANN_input
         real, dimension(38) :: ANN_input_final, exp_x, attns
@@ -146,8 +151,9 @@ contains
 
         
         mask_Tuv = ml_data%mask2dT + ml_data%OBCmaskCu_left + ml_data%OBCmaskCu_right + ml_data%OBCmaskCv_south + ml_data%OBCmaskCv_north
+        mask_Tuv = mask_Tuv + ml_data%mask2dT_left + ml_data%mask2dT_right + ml_data%mask2dT_north+ ml_data%mask2dT_south
 
-        if (mask_Tuv == 5.0) then 
+        if (mask_Tuv == 9.0) then 
             PSSS = ml_data%S(1)
             allocate(z_l(ml_config%nk),source=0.0)
             z_l = ml_config%z_l
@@ -158,15 +164,15 @@ contains
                 sa_profile(zz) = gsw_sa_from_sp(ml_data%S(zz), p_dbar, ml_data%geoLonT, ml_data%geoLatT)
                 
             end do
-            !ml_data%S = sa_profile
+            
             Smin = MINVAL(sa_profile)
 
-            !Smin_P = MINVAL(ml_data%S) 
+            
             
         end if
             
         
-        if (mask_Tuv < 5.0) then
+        if (mask_Tuv < 9.0) then
             ml_data%T_inc=0.0
         elseif (Smin < 0.0 .or. PSSS < 0.0) then
             ml_data%T_inc=0.0
@@ -175,10 +181,7 @@ contains
         else
             allocate(PRHO_profile(ml_data%nk),source=0.0)
             do zz  = 1, ml_data%nk
-                !p_dbar = gsw_p_from_z(-z_l(zz), ml_data%geoLatT)
-                !SA = gsw_sa_from_sp(ml_data%S(zz), p_dbar, ml_data%geoLonT, ml_data%geoLatT)
                 SA = sa_profile(zz)
-                !SA = ml_data%S(zz)
                 PT = ml_data%T(zz)
                 CT = gsw_ct_from_pt(SA, PT)
                 PRHO = gsw_sigma0(SA, CT)
@@ -217,29 +220,21 @@ contains
             if (zl_index_3mld == 0) then ! if 3 mld not found
                 ml_data%T_inc=0.0
             else
-                if (zl_index_3mld+2 > ml_data%nk+1) then
+                if (zl_index_3mld + 1 > ml_data%nk) then
                     ml_data%T_inc=0.0
-                elseif (ml_config%z_i(zl_index_3mld+2) > ml_data%bathyT .OR. &
-                        ml_config%z_i(zl_index_3mld+2) > ml_data%bathyU_left .OR. &
-                        ml_config%z_i(zl_index_3mld+2) > ml_data%bathyU_right .OR. &
-                        ml_config%z_i(zl_index_3mld+2) > ml_data%bathyV_south .OR. &
-                        ml_config%z_i(zl_index_3mld+2) > ml_data%bathyV_north) then
+                elseif (ml_config%z_i(zl_index_3mld+2) > MINVAL(ml_data%all_bathy)) then
                         ml_data%T_inc=0.0
                 else ! if above all bathy, then get the vertical profiles
 
                     zi_to_sigma = ml_config%z_i(2:zl_index_3mld + 1)/mld_depth
                     allocate(thetao_zgrad_profile(zl_index_3mld),source=0.0)
                     allocate(so_zgrad_profile(zl_index_3mld),source=0.0)
-                    !allocate(PRHO_zgrad_profile(zl_index_3mld),source=0.0)
                     allocate(uo_zgrad_profile(zl_index_3mld),source=0.0)
                     allocate(vo_zgrad_profile(zl_index_3mld),source=0.0)
 
                     do zz = 1, zl_index_3mld
                         thetao_top = ml_data%T(zz)
                         so_top = ml_data%S(zz)
-                        !CT = gsw_ct_from_pt(so_top,thetao_top)
-                        !PRHO_top = gsw_sigma0(so_top,CT)
-                        !PRHO_top = PRHO_profile(zz)
                         uo_right_top = ml_data%U_right(zz)
                         uo_left_top = ml_data%U_left(zz)
                         vo_north_top = ml_data%V_north(zz)
@@ -247,9 +242,6 @@ contains
                     
                         thetao_bottom = ml_data%T(zz+1)
                         so_bottom = ml_data%S(zz+1)
-                        !CT = gsw_ct_from_pt(so_bottom,thetao_bottom)
-                        !PRHO_bottom = gsw_sigma0(so_bottom,CT)
-                        !PRHO_bottom = PRHO_profile(zz+1)
                         uo_right_bottom = ml_data%U_right(zz+1)
                         uo_left_bottom = ml_data%U_left(zz+1)
                         vo_north_bottom = ml_data%V_north(zz+1)
@@ -257,21 +249,46 @@ contains
 
                         thetao_zgrad_profile(zz) = (thetao_top - thetao_bottom)/(z_l(zz+1) - z_l(zz))
                         so_zgrad_profile(zz) = (so_top - so_bottom)/(z_l(zz+1) - z_l(zz))
-                        !PRHO_zgrad_profile(zz) = (PRHO_top - PRHO_bottom)/(z_l(zz+1) - z_l(zz))
                         uo_zgrad_profile(zz) = (uo_right_top-uo_right_bottom+uo_left_top-uo_left_bottom)/(2*(z_l(zz+1) - z_l(zz)))
                         vo_zgrad_profile(zz) = (vo_north_top-vo_north_bottom+vo_south_top-vo_south_bottom)/(2*(z_l(zz+1) - z_l(zz)))
                     end do
 
                     zl_to_sigma = z_l(1:zl_index_3mld)/mld_depth
 
-                    !allocate(div_profile(zl_index_3mld),source=0.0)
+                    allocate(PRHO_xgrad_profile(zl_index_3mld),source=0.0)
+                    allocate(PRHO_ygrad_profile(zl_index_3mld),source=0.0)
 
-                    !do zz = 1, zl_index_3mld
-                        !call compute_current_divergence(ml_data%U_left(zz)*ml_data%dyCu_left, ml_data%U_right(zz)*ml_data%dyCu_right, &
-                                !ml_data%V_south(zz)*ml_data%dxCv_south, ml_data%V_north(zz)*ml_data%dxCv_north, &
-                                !ml_data%areacello, div)
-                        !div_profile(zz) = div
-                    !end do 
+                    do zz = 1, zl_index_3mld
+                        p_dbar = gsw_p_from_z(-z_l(zz), ml_data%geoLatT_left)
+                        SA = gsw_sa_from_sp(ml_data%S_left(zz), p_dbar, ml_data%geoLonT_left, ml_data%geoLatT_left)
+                        PT = ml_data%T_left(zz)
+                        CT = gsw_ct_from_pt(SA, PT)
+                        PRHO_left = gsw_sigma0(SA, CT)
+
+                        p_dbar = gsw_p_from_z(-z_l(zz), ml_data%geoLatT_right)
+                        SA = gsw_sa_from_sp(ml_data%S_right(zz), p_dbar, ml_data%geoLonT_right, ml_data%geoLatT_right)
+                        PT = ml_data%T_right(zz)
+                        CT = gsw_ct_from_pt(SA, PT)
+                        PRHO_right = gsw_sigma0(SA, CT)
+
+                        p_dbar = gsw_p_from_z(-z_l(zz), ml_data%geoLatT_north)
+                        SA = gsw_sa_from_sp(ml_data%S_north(zz), p_dbar, ml_data%geoLonT_north, ml_data%geoLatT_north)
+                        PT = ml_data%T_north(zz)
+                        CT = gsw_ct_from_pt(SA, PT)
+                        PRHO_north = gsw_sigma0(SA, CT)
+
+                        p_dbar = gsw_p_from_z(-z_l(zz), ml_data%geoLatT_south)
+                        SA = gsw_sa_from_sp(ml_data%S_south(zz), p_dbar, ml_data%geoLonT_south, ml_data%geoLatT_south)
+                        PT = ml_data%T_south(zz)
+                        CT = gsw_ct_from_pt(SA, PT)
+                        PRHO_south = gsw_sigma0(SA, CT)
+
+                        PRHO = PRHO_profile(zz) 
+
+                        PRHO_xgrad_profile(zz) = ((PRHO_right-PRHO)/ml_data%dxCu_right + (PRHO-PRHO_left)/ml_data%dxCu_left)/2
+                        PRHO_ygrad_profile(zz) = ((PRHO_north-PRHO)/ml_data%dyCv_north + (PRHO-PRHO_south)/ml_data%dyCv_south)/2
+
+                    end do 
             
             
                     ! interpolate values to target_sigmas
@@ -281,7 +298,6 @@ contains
                         if (right_index == 1) then
                             thetao_zgrad_sigma(i) = thetao_zgrad_profile(1)
                             so_zgrad_sigma(i) = so_zgrad_profile(1)
-                            !PRHO_zgrad_sigma(i) = PRHO_zgrad_profile(1)
                             uo_zgrad_sigma(i) = uo_zgrad_profile(1)
                             vo_zgrad_sigma(i) = vo_zgrad_profile(1)
                         else
@@ -289,62 +305,65 @@ contains
                                     thetao_zgrad_profile(right_index),target_sigmas(i),thetao_zgrad_sigma(i))
                             call interpolate(zi_to_sigma(right_index-1),zi_to_sigma(right_index),so_zgrad_profile(right_index-1), &
                                     so_zgrad_profile(right_index),target_sigmas(i),so_zgrad_sigma(i))
-                            !call interpolate(zi_to_sigma(right_index-1),zi_to_sigma(right_index),PRHO_zgrad_profile(right_index-1), &
-                                    !PRHO_zgrad_profile(right_index),target_sigmas(i),PRHO_zgrad_sigma(i))
                             call interpolate(zi_to_sigma(right_index-1),zi_to_sigma(right_index),uo_zgrad_profile(right_index-1), &
                                     uo_zgrad_profile(right_index),target_sigmas(i),uo_zgrad_sigma(i))
                             call interpolate(zi_to_sigma(right_index-1),zi_to_sigma(right_index),vo_zgrad_profile(right_index-1), &
                                     vo_zgrad_profile(right_index),target_sigmas(i),vo_zgrad_sigma(i))
                         end if
 
-                        !call find_right_index_clean(zl_to_sigma, target_sigmas(i), right_index)
-                        !if (right_index == 1) then
-                            !div_sigma(i) = div_profile(1)
-                        !else
-                            !call interpolate(zl_to_sigma(right_index-1),zl_to_sigma(right_index),div_profile(right_index-1),div_profile(right_index),target_sigmas(i),div_sigma(i))
-                        !end if
+                        call find_right_index_clean(zl_to_sigma, target_sigmas(i), right_index)
+                        if (right_index == 1) then
+                            PRHO_xgrad_sigma(i) = PRHO_xgrad_profile(1)
+                            PRHO_ygrad_sigma(i) = PRHO_ygrad_profile(1)
+                        else
+                            call interpolate(zl_to_sigma(right_index-1),zl_to_sigma(right_index),PRHO_xgrad_profile(right_index-1), &
+                                    PRHO_xgrad_profile(right_index),target_sigmas(i),PRHO_xgrad_sigma(i))
+                            call interpolate(zl_to_sigma(right_index-1),zl_to_sigma(right_index),PRHO_ygrad_profile(right_index-1), &
+                                    PRHO_ygrad_profile(right_index),target_sigmas(i),PRHO_ygrad_sigma(i))
+                        end if
                     end do
                     
-                    !tauamp = sqrt(((ml_data%taux_left+ml_data%taux_right)/2)**2+((ml_data%tauy_south+ml_data%tauy_north)/2)**2)
+                   
 
                     
                     thetao_zgrad_sigma_dist = sqrt(sum(thetao_zgrad_sigma**2))
                     so_zgrad_sigma_dist = sqrt(sum(so_zgrad_sigma**2))
-                    !PRHO_zgrad_sigma_dist = sqrt(sum(PRHO_zgrad_sigma**2))
-                    !div_sigma_dist = sqrt(sum(div_sigma**2))
+                    
                     shear2_sigma = uo_zgrad_sigma**2 + vo_zgrad_sigma**2
                     shear2_sigma_dist = sqrt(sum(shear2_sigma**2))
+
+                    Bh_sigma = PRHO_xgrad_sigma**2 + PRHO_ygrad_sigma**2
+                    Bh_sigma_dist = sqrt(sum(Bh_sigma**2))
                     
                     ANN_input(1:15) = thetao_zgrad_sigma/thetao_zgrad_sigma_dist
-                    !ANN_input(16:30) = PRHO_zgrad_sigma/PRHO_zgrad_sigma_dist
                     ANN_input(16:30) = so_zgrad_sigma/so_zgrad_sigma_dist
                     
                     ANN_input(31) = (log10(mld_depth) - 1.0) / 2.5
                     ANN_input(32) = sin(pi / 180.0 * ml_data%geoLatT)
-                    !ANN_input(33) = (log10(tauamp+1E-3)+1.2)/0.46
-                    !ANN_input(34) = (ml_data%latent+114)/71
-                    !ANN_input(35) = (ml_data%sensible+14.4)/24
-                    !ANN_input(36) = (ml_data%lw+55)/21
-                    !ANN_input(37) = ml_data%sw/400
+                    
                     if (shear2_sigma_dist == 0.0) then
                         shear2_sigma_dist = 1E-8 !just for initialization prep
                     end if
                     ANN_input(33:47) = shear2_sigma/shear2_sigma_dist
 
-                    ANN_input(48) = (log10(thetao_zgrad_sigma_dist+1E-3)+0.78)/0.48
-                    !ANN_input(49) = (log10(PRHO_zgrad_sigma_dist+1E-3)+1.32)/0.52
-                    ANN_input(49) = (log10(so_zgrad_sigma_dist+1E-5)+1.84)/0.55
-                    ANN_input(50) = (log10(shear2_sigma_dist+1E-8)+4.17)/0.86
+                    ANN_input(48:62) = Bh_sigma/Bh_sigma_dist
+
+                    ANN_input(63) = (log10(thetao_zgrad_sigma_dist+1E-3)+0.78)/0.48
+                    ANN_input(64) = (log10(so_zgrad_sigma_dist+1E-5)+1.84)/0.55
+                    ANN_input(65) = (log10(shear2_sigma_dist+1E-8)+4.17)/0.86
+                    ANN_input(66) = (log10(Bh_sigma_dist)+10.9)/0.7
 
                     ANN_input_final(1:2) = ANN_input(31:32)
-                    ANN_input_final(3:5) = ANN_input(48:50)
+                    ANN_input_final(3:6) = ANN_input(63:66)
                     
                     call cnn_encode(ANN_input(1:15), ml_config%e1_weight1, ml_config%e1_bias1, ml_config%e1_weight2, ml_config%e1_bias2, encoder_output)
-                    ANN_input_final(6:13) = encoder_output
+                    ANN_input_final(7:14) = encoder_output
                     call cnn_encode(ANN_input(16:30), ml_config%e2_weight1, ml_config%e2_bias1, ml_config%e2_weight2, ml_config%e2_bias2, encoder_output)
-                    ANN_input_final(14:21) = encoder_output
+                    ANN_input_final(15:22) = encoder_output
                     call cnn_encode(ANN_input(33:47), ml_config%e3_weight1, ml_config%e3_bias1, ml_config%e3_weight2, ml_config%e3_bias2, encoder_output)
-                    ANN_input_final(22:29) = encoder_output
+                    ANN_input_final(23:30) = encoder_output
+                    call cnn_encode(ANN_input(48:62), ml_config%e4_weight1, ml_config%e4_bias1, ml_config%e4_weight2, ml_config%e4_bias2, encoder_output)
+                    ANN_input_final(31:38) = encoder_output
 
                     attns1 = max(ReLU_zero, matmul(ml_config%attn_weight1, ANN_input_final) + ml_config%attn_bias1)
                     attns = matmul(ml_config%attn_weight2, attns1) + ml_config%attn_bias2
@@ -576,8 +595,8 @@ contains
         type(ocean_oda_ml_config), pointer, intent(inout) :: ml_config
 
         
-        real, dimension(3,1,16)  :: e1_weight1_temp, e2_weight1_temp, e3_weight1_temp
-        real, dimension(3,16,8)  :: e1_weight2_temp, e2_weight2_temp, e3_weight2_temp
+        real, dimension(3,1,16)  :: e1_weight1_temp, e2_weight1_temp, e3_weight1_temp, e4_weight1_temp
+        real, dimension(3,16,8)  :: e1_weight2_temp, e2_weight2_temp, e3_weight2_temp, e4_weight2_temp
         real, dimension(38,32)  :: attn_weight1_temp
         real, dimension(32,38)  :: attn_weight2_temp
         real, dimension(38,32)  :: l1_weight_temp
@@ -628,6 +647,15 @@ contains
             end do
         end do
 
+        varname = 'e4_weight1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e4_weight1_temp)
+        do i = 1, 3
+            do k = 1, 16
+                ml_config%e4_weight1(k, 1, i) = e4_weight1_temp(i, 1, k)
+            end do
+        end do
+
         varname = 'e1_weight2'
         retval = nf90_inq_varid(ncid, varname, varid)
         retval = nf90_get_var(ncid, varid, e1_weight2_temp)
@@ -657,6 +685,17 @@ contains
             do j = 1, 16
                 do k = 1, 8
                     ml_config%e3_weight2(k, j, i) = e3_weight2_temp(i, j, k)
+                end do
+            end do
+        end do
+
+        varname = 'e4_weight2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, e4_weight2_temp)
+        do i = 1, 3
+            do j = 1, 16
+                do k = 1, 8
+                    ml_config%e4_weight2(k, j, i) = e4_weight2_temp(i, j, k)
                 end do
             end do
         end do
@@ -746,6 +785,13 @@ contains
         varname = 'e3_bias2'
         retval = nf90_inq_varid(ncid, varname, varid)
         retval = nf90_get_var(ncid, varid, ml_config%e3_bias2)
+
+        varname = 'e4_bias1'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e4_bias1)
+        varname = 'e4_bias2'
+        retval = nf90_inq_varid(ncid, varname, varid)
+        retval = nf90_get_var(ncid, varid, ml_config%e4_bias2)
 
         varname = 'attn_bias1'
         retval = nf90_inq_varid(ncid, varname, varid)
