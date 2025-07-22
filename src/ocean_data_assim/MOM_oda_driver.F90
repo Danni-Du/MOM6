@@ -1032,10 +1032,10 @@ subroutine get_ML_bias_correction(Time, US, CS)
       
     CS%ml_data%bathyT = CS%model_G%bathyT(i,j)
     CS%ml_data%all_bathy = CS%model_G%bathyT(i-1:i+1,j-1:j+1)
-    CS%ml_data%bathyU_left = (CS%model_G%bathyT(i-1,j)+CS%model_G%bathyT(i,j))/2
-    CS%ml_data%bathyU_right = (CS%model_G%bathyT(i,j)+CS%model_G%bathyT(i+1,j))/2
-    CS%ml_data%bathyV_south = (CS%model_G%bathyT(i,j-1)+CS%model_G%bathyT(i,j))/2
-    CS%ml_data%bathyV_north = (CS%model_G%bathyT(i,j)+CS%model_G%bathyT(i,j+1))/2
+    !CS%ml_data%bathyU_left = (CS%model_G%bathyT(i-1,j)+CS%model_G%bathyT(i,j))/2
+    !CS%ml_data%bathyU_right = (CS%model_G%bathyT(i,j)+CS%model_G%bathyT(i+1,j))/2
+    !CS%ml_data%bathyV_south = (CS%model_G%bathyT(i,j-1)+CS%model_G%bathyT(i,j))/2
+    !CS%ml_data%bathyV_north = (CS%model_G%bathyT(i,j)+CS%model_G%bathyT(i,j+1))/2
 
     CS%ml_data%mask2dT = CS%model_G%mask2dT(i,j)
     CS%ml_data%mask2dT_left = CS%model_G%mask2dT(i-1,j)
@@ -1050,6 +1050,14 @@ subroutine get_ML_bias_correction(Time, US, CS)
 
     CS%ml_data%geoLatT = CS%model_G%geoLatT(i,j)
     CS%ml_data%geoLonT = CS%model_G%geoLonT(i,j)
+    CS%ml_data%geoLatT_left = CS%model_G%geoLatT(i-1,j)
+    CS%ml_data%geoLonT_left = CS%model_G%geoLonT(i-1,j)
+    CS%ml_data%geoLatT_right = CS%model_G%geoLatT(i+1,j)
+    CS%ml_data%geoLonT_right = CS%model_G%geoLonT(i+1,j)
+    CS%ml_data%geoLatT_south = CS%model_G%geoLatT(i,j-1)
+    CS%ml_data%geoLonT_south = CS%model_G%geoLonT(i,j-1)
+    CS%ml_data%geoLatT_north = CS%model_G%geoLatT(i,j+1)
+    CS%ml_data%geoLonT_north = CS%model_G%geoLonT(i,j+1)
 
 
     
