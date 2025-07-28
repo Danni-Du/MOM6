@@ -167,7 +167,23 @@ contains
             end do
             
             Smin = MINVAL(sa_profile)
+            do zz = 1, ml_data%nk
+                p_dbar = gsw_p_from_z(-z_l(zz), ml_data%geoLatT_left)
+                SA = gsw_sa_from_sp(ml_data%S_left(zz), p_dbar, ml_data%geoLonT_left, ml_data%geoLatT_left)
+                Smin = min(Smin,SA)
 
+                p_dbar = gsw_p_from_z(-z_l(zz), ml_data%geoLatT_right)
+                SA = gsw_sa_from_sp(ml_data%S_right(zz), p_dbar, ml_data%geoLonT_right, ml_data%geoLatT_right)
+                Smin = min(Smin,SA)
+
+                p_dbar = gsw_p_from_z(-z_l(zz), ml_data%geoLatT_north)
+                SA = gsw_sa_from_sp(ml_data%S_north(zz), p_dbar, ml_data%geoLonT_north, ml_data%geoLatT_north)
+                Smin = min(Smin,SA)
+
+                p_dbar = gsw_p_from_z(-z_l(zz), ml_data%geoLatT_south)
+                SA = gsw_sa_from_sp(ml_data%S_south(zz), p_dbar, ml_data%geoLonT_south, ml_data%geoLatT_south)
+                Smin = min(Smin,SA)
+            end do
             
             
         end if
