@@ -467,6 +467,9 @@ contains
                     
 
                     !!! salinity increments
+                    ANN_input_final(1:2) = ANN_input(31:32)
+                    ANN_input_final(3:6) = ANN_input(63:66)
+
                     call cnn_encode(ANN_input(1:15), ml_config%e1_weight1_S, ml_config%e1_bias1_S, ml_config%e1_weight2_S, ml_config%e1_bias2_S, encoder_output)
                     ANN_input_final(7:14) = encoder_output
                     call cnn_encode(ANN_input(16:30), ml_config%e2_weight1_S, ml_config%e2_bias1_S, ml_config%e2_weight2_S, ml_config%e2_bias2_S, encoder_output)
