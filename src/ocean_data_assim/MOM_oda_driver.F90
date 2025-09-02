@@ -1071,6 +1071,8 @@ subroutine get_ML_bias_correction(Time, US, CS)
     do k=1,CS%nk
       if (CS%T_ml_tend(i,j,k) > 1.0E-5*US%degC_to_C) CS%T_ml_tend(i,j,k) = 1.0E-5
       if (CS%T_ml_tend(i,j,k) < -1.0E-5*US%degC_to_C) CS%T_ml_tend(i,j,k) = -1.0E-5
+      if (CS%S_ml_tend(i,j,k) > 1.0E-5*US%ppt_to_S) CS%S_ml_tend(i,j,k) = 1.0E-5
+      if (CS%S_ml_tend(i,j,k) < -1.0E-5*US%ppt_to_S) CS%S_ml_tend(i,j,k) = -1.0E-5
     enddo
 
   enddo; enddo
