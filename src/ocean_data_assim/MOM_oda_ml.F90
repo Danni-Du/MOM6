@@ -562,7 +562,7 @@ contains
             endif ! end if 3 mld exceeds total number of levels
         
         endif
-        ml_data%S_inc=0.0
+        
 
     end subroutine oda_ml_inference
 
