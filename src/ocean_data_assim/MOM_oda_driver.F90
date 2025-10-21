@@ -1275,6 +1275,11 @@ subroutine apply_oda_tracer_increments(Time, G, GV, tv, h, CS)
 
   tv%T(isc:iec,jsc:jec,:) = tv%T(isc:iec,jsc:jec,:) + T_tend_inc(isc:iec,jsc:jec,:)*CS%apply_interval
   tv%S(isc:iec,jsc:jec,:) = tv%S(isc:iec,jsc:jec,:) + S_tend_inc(isc:iec,jsc:jec,:)*CS%apply_interval
+  do i = isc, iec
+    do j = jsc, jec
+      if (tv%S(i,j,1) < 0.0) tv%S(i,j,1) = 0.0
+    end do
+  end do
 
   call pass_var(tv%T, G%Domain)
   call pass_var(tv%S, G%Domain)
