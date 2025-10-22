@@ -110,7 +110,7 @@ real :: ReLU_zero = 0
 real, dimension(15) :: target_sigmas = (/0.1,0.3,0.5,0.7,0.9,1.1,1.3,1.5,1.7,1.9,2.1,2.3,2.5,2.7,2.9/)
 real, dimension(16) :: output_flux_sigmas = (/0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4, 2.6, 2.8, 3.0/)
 character(len=255)  :: danni_ANN_name_T = '/gpfs/f5/gfdl_sd/world-shared/Danni.Du/ECDA_data/ML/M8/M8_Sfixed_no_atoms_more_ens_attention_encoder_decoder_2003_2014_116epoch_L1.nc'
-character(len=255)  :: danni_ANN_name_S = '/gpfs/f5/gfdl_sd/world-shared/Danni.Du/ECDA_data/ML/M8/dev13.0_epoch194_fine_tuning_salinity.nc'
+character(len=255)  :: danni_ANN_name_S = '/gpfs/f5/gfdl_sd/world-shared/Danni.Du/ECDA_data/ML/M8/dev13.0_epoch20_fine_tuning_salinity.nc'
 real :: seconds_in_30_days = 3600*24*30
 
 integer :: id_clock_ml_remapping
