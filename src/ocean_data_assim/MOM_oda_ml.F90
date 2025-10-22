@@ -533,7 +533,7 @@ contains
                     coef = so_zgrad_sigma_dist*0.01*(mld_depth**2)*(shear2_sigma_dist**0.5)
                     flux_output = flux_output * coef
         
-                    output_DT_sigmas =  (flux_output(1:15)-flux_output(2:16))/(0.2*mld_depth)/1000
+                    output_DS_sigmas =  (flux_output(1:15)-flux_output(2:16))/(0.2*mld_depth)/1000
 
                     
                     
